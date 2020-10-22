@@ -1,5 +1,3 @@
-# Goal: add goverance capabilities to Node Template
-
 # Substrate Node Template
 
 A new FRAME-based Substrate node, ready for hacking :rocket:
