@@ -1,3 +1,5 @@
+# Goal: add goverance capabilities to Node Template
+
 # Substrate Node Template
 
 A new FRAME-based Substrate node, ready for hacking :rocket:
@@ -164,3 +166,4 @@ by appending your own. A few useful ones are as follow.
 # Check whether the code is compilable
 ./scripts/docker_run.sh cargo check
 ```
+
