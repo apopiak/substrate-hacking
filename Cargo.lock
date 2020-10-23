@@ -3233,6 +3233,7 @@ dependencies = [
 name = "node-template"
 version = "2.0.0"
 dependencies = [
+ "bs58",
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "jsonrpc-core",
@@ -3278,7 +3279,9 @@ dependencies = [
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
+ "pallet-node-authorization",
  "pallet-randomness-collective-flip",
+ "pallet-scheduler",
  "pallet-sudo",
  "pallet-template",
  "pallet-timestamp",
@@ -3539,6 +3542,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-node-authorization"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de7ab717025918f2a40eb7e3f58490168f5e23b38a9ae38e154786dda49f8eb2"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-randomness-collective-flip"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3548,6 +3567,22 @@ dependencies = [
  "frame-system",
  "parity-scale-codec",
  "safe-mix",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-scheduler"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f8abd5ae3f0ca51809f1e5173877ead7b2ffe90704773d150fd27496f91f9a9"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
