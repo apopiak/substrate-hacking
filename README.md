@@ -1,27 +1,60 @@
-# Substrate Node Template
+# A Customized Substrate Node that does Stuff
 
-A new FRAME-based Substrate node, ready for hacking :rocket:
+This Substrate node was built following two tutorials from the Substrate Developer Hub:
+(1) Perform a Forkless Upgrade (https://substrate.dev/docs/en/tutorials/upgrade-a-chain/sudo-upgrade)
+(2) Build a Permissioned Network (https://substrate.dev/docs/en/tutorials/build-permission-network/)
 
-## Local Development
+:rocket: It's meant to help beginners get a taste for how easy it is to add modular functionality to a Substrate-built blockchain. This is originally a fork from the Substrate Template Node. Please follow Substrate's tutorial here if this is your first time setting up your environment: https://substrate.dev/docs/en/tutorials/create-your-first-substrate-chain/
 
-Follow these steps to prepare a local Substrate development environment :hammer_and_wrench:
+:bulb: :goal_net: The goal is to pass in a WASM binaries of compiles runtimes for new modules / pallet functionality :goal_net: :bulb:
 
-### Setup
+# Build, Run and Try Things
 
-Setup instructions can be found at the
-[Substrate Developer Hub](https://substrate.dev/docs/en/knowledgebase/getting-started).
-
-### Build
-
-Once the development environment is set up, build the node template. This command will build the
-[Wasm](https://substrate.dev/docs/en/knowledgebase/advanced/executor#wasm-execution) and
-[native](https://substrate.dev/docs/en/knowledgebase/advanced/executor#native-execution) code:
-
-```bash
-WASM_BUILD_TOOLCHAIN=nightly-2020-10-05 cargo build --release
-```
+The Compiling Substrate section (https://substrate.dev/docs/en/tutorials/create-your-first-substrate-chain/) teaches everything you need to know to get this node up and running :hammer_and_wrench:
 
 ## Run
+### Getting the Permissioned Network Up and Running
+Let's start by running our permissioned network. Clone this directory, cd into it and run the following (it's normal that this takes a little while):
+
+```bash
+cargo build --release
+```
+
+Based on the tutorial (https://substrate.dev/docs/en/tutorials/build-permission-network/), let's launch 3 well-known nodes. Paste the following commands in separate terminals under the same directory:
+
+```bash
+// Start with Alice's node 
+./target/release/node-template --chain=local --base-path ~/tmp/validator1 --alice --node-key=c12b6d18942f5ee8528c8e2baf4e147b5c5c18710926ea492d09cbd9f6c9f82a --port 30333 --ws-port 9944
+```
+```bash
+// Now with Bob's node 
+./target/release/node-template --chain=local --base-path ~/tmp/validator2 --bob --node-key=6ce3be907dbcabf20a9a5a60a712b4256a54196000a8ed4050d352bc113f8c58 --port 30334 --ws-port 9945
+
+// And finally Charlie's
+./target/release/node-template --chain=local --base-path ~/tmp/validator3 --name charlie  --node-key=3a9d5b35b9fb4c42aafadeca046f6bf56107bd2579687f069b42646684b94d9e --port 30335 --ws-port=9946 --offchain-worker always
+```
+:tv: Now go to https://polkadot.js.org/apps/ to see what's happening live! While you're there, add the following in the Settings-->Developer page:
+
+```bash
+{
+  "PeerId": "(Vec<u8>)"
+}
+```
+Head over to Chainstate-->Storage and select "nodeAuthorization" and the "wellKnownNodes()" function. Hit the (+) button and this will allow you to see the well known nodes, Alice, Bob and Charlie.
+Note: refresh the page if it's not displaying anything.
+
+See how to add connections by following the original tutorial. For the purpose of this codebase, we've done what we need and have our permissioned network up and running. Now, let's add in an upgrade right from the UI.
+
+### Adding Extrinsics from UI
+
+The key runtime modules to achieve forkless upgrades in our usage are: Sudo and Schedular. The Sudo pallet is already a part of the node template we used. The Schedular pallet was added as per the tutorial referred to above (https://substrate.dev/docs/en/tutorials/upgrade-a-chain/).
+
+Using the Extrinsic from the Sudo pallet, you can experiment with adding any of the runtime updates in the form of WASM binaries to this permissioned network. Please refer to the folder: WASM-runtimes.
+
+
+//TODO: Implement different governance instead of sudo
+//TODO: Implement a type of multisig account that receives runtime update for members to vote on before it //gets included to runtime
+
 
 ### Single Node Development Chain
 
