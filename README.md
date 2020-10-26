@@ -7,7 +7,7 @@ This Substrate node was built following two tutorials from the [Substrate Develo
 
 :rocket: It's meant to help beginners get a taste for how easy it is to add functionality to a Substrate-built blockchain in a modular way. This is originally a fork from the Substrate Template Node. Please follow Substrate's tutorial [here](https://substrate.dev/docs/en/tutorials/create-your-first-substrate-chain/) if this is your first time working with Substrate.
 
-:bulb: :goal_net: The goal is to pass in a WASM binaries of compiles runtimes for new modules / pallet functionality :goal_net: :bulb:
+:bulb: :goal_net: The goal is to pass in WASM binaries of compiled runtimes to add new modules / pallet functionality to the chain :goal_net: :bulb:
 
 # Build, Run and Try Things
 
