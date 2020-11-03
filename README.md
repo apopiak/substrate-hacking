@@ -7,7 +7,8 @@ This Substrate node was built following two tutorials from the [Substrate Develo
 
 :rocket: It's meant to help beginners get a taste for how easy it is to add functionality to a Substrate-built blockchain in a modular way. This is originally a fork from the Substrate Template Node. Please follow Substrate's tutorial [here](https://substrate.dev/docs/en/tutorials/create-your-first-substrate-chain/) if this is your first time working with Substrate.
 
-:bulb: :goal_net: The goal is to pass in WASM binaries of compiled runtimes to add new modules / pallet functionality to the chain :goal_net: :bulb:
+:bulb: :goal_net: The goal is add new functionality to this permissioned chain :goal_net: :bulb:
+:factory: See the runtime modules folder for a history of the changes in this chains runtime
 
 # Build, Run and Try Things
 
@@ -30,9 +31,6 @@ Based on the [tutorial](https://substrate.dev/docs/en/tutorials/build-permission
 ```bash
 // Now with Bob's node 
 ./target/release/node-template --chain=local --base-path ~/tmp/validator2 --bob --node-key=6ce3be907dbcabf20a9a5a60a712b4256a54196000a8ed4050d352bc113f8c58 --port 30334 --ws-port 9945
-
-// And finally Charlie's
-./target/release/node-template --chain=local --base-path ~/tmp/validator3 --name charlie  --node-key=3a9d5b35b9fb4c42aafadeca046f6bf56107bd2579687f069b42646684b94d9e --port 30335 --ws-port=9946 --offchain-worker always
 ```
 :tv: Now go to https://polkadot.js.org/apps/ to see what's happening live! This webapp developed by Polkadot allows you to connect your local node by selecting a custom endpoint - make sure it's connected to `127.0.0.1:9944`. While you're there, go to the _Settings_ &rarr; _Developer_ page:
 add the following in the:
@@ -41,10 +39,16 @@ add the following in the:
   "PeerId": "(Vec<u8>)"
 }
 ```
+```bash 
+// And finally Charlie's
+./target/release/node-template --chain=local --base-path ~/tmp/validator3 --name charlie  --node-key=3a9d5b35b9fb4c42aafadeca046f6bf56107bd2579687f069b42646684b94d9e --port 30335 --ws-port=9946 --offchain-worker always
+```
+To finish adding Charlie to the network, go to the **Developer Sudo** page in apps, submit the `nodeAuthorization` -> `add_well_known_node` call with the peer id in hex of Charlie's node `002408011220876a7b4984f98006dc8d666e28b60de307309835d775e7755cc770328cdacf2e` and the owner being Charlie.
+
 Head over to _Chainstate_ &rarr; _Storage_ and select `"nodeAuthorization"` and the `"wellKnownNodes()"` function. Hit the `(+)` button and this will allow you to see the well known nodes, Alice, Bob and Charlie.
 :vertical_traffic_light: **Note**: refresh the page if it's not displaying anything.
 
-See how to add connections by following the original tutorial. For the purpose of this codebase, we've done what we need and have our permissioned network up and running. Now, let's add in an upgrade right from the UI.
+See how to add more connections by following the original tutorial. For the purpose of this codebase, we've done what we need and have our permissioned network up and running. Now, let's add in an upgrade right from the UI.
 
 ### Adding Extrinsics from UI
 
@@ -52,7 +56,37 @@ The key runtime modules to achieve forkless upgrades in our usage are: Sudo and 
 
 Using the *Extrinsic* from the Sudo pallet, you can experiment with adding any of the runtime updates in the form of WASM binaries to this permissioned network. Please refer to the folder: WASM-runtimes.
 
+## Using the FRAME-based Multisig Pallet in our Permissioned Network
+
+NOTE: the updated runtime for using the Multisig pallet can be found in the Runtime folder
+
+Here's the code that has been added to include the multisig pallet to our runtime:
+
+```bash
+// Configure the runtime's implementation of the Multisig pallet in runtime/src/lib.rs
+parameter_types! {
+	// One storage item
+	pub const DepositBase: Balance = 100;
+	// Additional storage item 
+	pub const DepositFactor: Balance = 10;
+	pub const MaxSignatories: u16 = 100;
+}
+
+impl pallet_multisig::Trait for Runtime {
+	type Event = Event;
+	type Call = Call;
+	type Currency = Balances;
+	type DepositBase = DepositBase;
+	type DepositFactor = DepositFactor;
+	type MaxSignatories = MaxSignatories;
+	type WeightInfo = ();
+}
 ```
+And `Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},` :rocket:
+
+```
+//TODO: Show a Multisig forkless upgrade  
+
 //TODO: Implement different governance instead of Sudo
 
 //TODO: Implement a type of multisig account that receives runtime update for members to vote on before it //gets included to runtime
