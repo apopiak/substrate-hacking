@@ -57,6 +57,7 @@ sp-version = { default-features = false, version = '2.0.0' }
 # additional pallets
 pallet-scheduler = { default-features = false, version = '2.0.0' }
 pallet-node-authorization = { default-features = false, version = '2.0.0' }
+pallet-multisig = { default-features = false, version = '2.0.0'}
 
 [features]
 default = ['std']
@@ -102,4 +103,5 @@ std = [
     # additional stds
     'pallet-node-authorization/std',
     'pallet-scheduler/std',
+    'pallet-multisig/std',
 ]
