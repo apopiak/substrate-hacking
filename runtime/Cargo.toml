@@ -70,6 +70,7 @@ runtime-benchmarks = [
     'pallet-timestamp/runtime-benchmarks',
     'sp-runtime/runtime-benchmarks', 
 ]
+
 std = [
     'codec/std',
     'serde',
@@ -97,6 +98,8 @@ std = [
     'sp-std/std',
     'sp-transaction-pool/std',
     'sp-version/std',
+    
+    # additional stds
     'pallet-node-authorization/std',
     'pallet-scheduler/std',
 ]
