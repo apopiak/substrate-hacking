@@ -1,1 +1,1 @@
-[Original codebase](https://github.com/sacha-l/substrate-hacking/edit/upgradable-permissioned-net/)
+[Original codebase](https://github.com/sacha-l/substrate-hacking/tree/upgradable-permissioned-net)
