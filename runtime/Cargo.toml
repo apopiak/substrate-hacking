@@ -57,7 +57,10 @@ sp-version = { default-features = false, version = '2.0.0' }
 # additional pallets
 pallet-scheduler = { default-features = false, version = '2.0.0' }
 pallet-node-authorization = { default-features = false, version = '2.0.0' }
-pallet-multisig = { default-features = false, version = '2.0.0'}
+pallet-multisig = { default-features = false, version = '2.0.0' }
+pallet-treasury = { default-features = false, version = '2.0.0' }
+pallet-elections-phragmen = { default-features = false, version = '2.0.0' }
+pallet-collective = { default-features = false, version = '2.0.0' }
 
 [features]
 default = ['std']
@@ -104,4 +107,7 @@ std = [
     'pallet-node-authorization/std',
     'pallet-scheduler/std',
     'pallet-multisig/std',
+    'pallet-treasury/std',
+    'pallet-elections-phragmen/std',
+    'pallet-collective/std',
 ]

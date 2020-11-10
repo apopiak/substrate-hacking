@@ -1,3 +1,4 @@
+use node_runtime::ElectionsConfig;
 use sp_core::{Pair, Public, sr25519};
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
@@ -9,7 +10,8 @@ use sp_runtime::traits::{Verify, IdentifyAccount};
 use sc_service::ChainType;
 use sp_core::OpaquePeerId; // A struct wraps Vec<u8>, represents as our `PeerId`.
 use node_template_runtime::NodeAuthorizationConfig; // The genesis config that serves for our pallet.
-
+use node_template_runtime::{
+	CouncilConfig};
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -169,5 +171,15 @@ fn testnet_genesis(
         	),
   	  	],
 		}),
+
+		pallet_collective_Instance1: Some(CouncilConfig {
+				members: vec![],
+				phantom: Default::default(),
+			}),
+		
+		pallet_elections_phragmen: Some(ElectionsConfig {
+			members: vec![],
+		}),
 	}
+	
 }

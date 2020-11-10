@@ -1,141 +1,187 @@
-# A Customized Substrate Node that does Stuff
+# Governance on Substrate
 
-This Substrate node was built following two tutorials from the [Substrate Developer Hub](https://substrate.dev/):
+The goal here is to document how different components for governance can interact with eachother within Substrate. There's a huge opportunity to use tools for adding governance to Substrate-built systems and understanding how they work and how they can be configured is an important building block for building systems with solid foundations. :hatching_chick:
 
-1) [Perform a Forkless Upgrade](https://substrate.dev/docs/en/tutorials/upgrade-a-chain/sudo-upgrade)
-2) [Build a Permissioned Network](https://substrate.dev/docs/en/tutorials/build-permission-network/)
+:bulb: Some use cases for using governance as a core component:
 
-:rocket: It's meant to help beginners get a taste for how easy it is to add functionality to a Substrate-built blockchain in a modular way. This is originally a fork from the Substrate Template Node. Please follow Substrate's tutorial [here](https://substrate.dev/docs/en/tutorials/create-your-first-substrate-chain/) if this is your first time working with Substrate.
+- Collective management layers 
+- Social interaction layers 
+- Device to device communication 
 
-:bulb: :goal_net: The goal is add new functionality to this permissioned chain :goal_net: :bulb:
+:memo: The structure of this document is:
+1. :hammer: First breakdown the key components for implementing governance with Substrate 
+2. :mag_right: Analyzse how these pallets interact inside Polkadots runtime and implement into this Substrate template fork _(IN PROGRESS)_
+3. Show examples of how to customize governance based on additional pallet configurations _(TODO)_
 
-This guide will walk you through how this chains runtime was built and how to interact with it using [Polkadots Block Explorer UI](https://polkadot.js.org/apps/).
+## 1. Breaking Things Down
 
-:factory: See the runtime modules folder for a history of the changes in this chains runtime _(this is actually useless, only here to play around with forkless upgrades)_
-
-# Build, Run and Try Things
-
-The [Compiling Substrate](https://substrate.dev/docs/en/tutorials/create-your-first-substrate-chain/) section teaches everything you need to know to get this node up and running :hammer_and_wrench:
-
-## Run
-### Getting the Permissioned Network Up and Running
-:bulb: :bank: Let's start by running our permissioned network. Clone this directory, cd into it and run the following (don't sweat it, it's normal that this might take a little while):
+We'll use how Polkadot implements governance as a reference to our guide. Although we won't look at all of these, here are the difference parts to its Governance machine:
 
 ```bash
-cargo build --release
+// Governance stuff.
+		Democracy: pallet_democracy::{Module, Call, Storage, Config, Event<T>} = 14,
+		Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 15,
+		TechnicalCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>} = 16,
+		ElectionsPhragmen: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>} = 17,
+		TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 18,
+		Treasury: pallet_treasury::{Module, Call, Storage, Event<T>} = 19,
 ```
 
-Based on the [tutorial](https://substrate.dev/docs/en/tutorials/build-permission-network/), let's launch 3 well-known nodes. Paste the following commands in separate terminals under the same directory:
+For our purposes, here are the pallets we'll look at:
+
+```Council``` - https://docs.rs/pallet-collective/2.0.0/pallet_collective/ 
+
+```Treasury``` - https://docs.rs/pallet-treasury/2.0.0/pallet_treasury/ 
+
+```ElectionsPhragmen``` -  https://docs.rs/pallet-elections-phragmen/2.0.0/pallet_elections_phragmen/
+
+## 2. Pallet Interactions
+### Council 
+:family: Polkadot uses what's referred to as a CouncilCollective for their voting members or committees. The way ``CouncilCollective`` is created is by instantiating ``pallet_collective`` in runtime/lib.rs. It's traits define what council rules are enforced and how.
 
 ```bash
-// Start with Alice's node 
-./target/release/node-template --chain=local --base-path ~/tmp/validator1 --alice --node-key=c12b6d18942f5ee8528c8e2baf4e147b5c5c18710926ea492d09cbd9f6c9f82a --port 30333 --ws-port 9944
-```
-```bash
-// Now with Bob's node 
-./target/release/node-template --chain=local --base-path ~/tmp/validator2 --bob --node-key=6ce3be907dbcabf20a9a5a60a712b4256a54196000a8ed4050d352bc113f8c58 --port 30334 --ws-port 9945
-```
-:tv: Now head to https://polkadot.js.org/apps/ to see what's happening live! This webapp developed by Polkadot allows you to connect to a local node by selecting a custom endpoint &mdash; make sure it's connected to `127.0.0.1:9944`. While you're there, go to the _Settings_ &rarr; _Developer_ page and add the following:
-```bash
-{
-  "PeerId": "(Vec<u8>)"
-}
-```
-To add Charlie to the network run the following in a separate terminal:
-
-```bash 
-// And finally Charlie's
-./target/release/node-template --chain=local --base-path ~/tmp/validator3 --name charlie  --node-key=3a9d5b35b9fb4c42aafadeca046f6bf56107bd2579687f069b42646684b94d9e --port 30335 --ws-port=9946 --offchain-worker always
-```
-Then, head to the apps UI and go to **_Developer_** &rarr; **_Sudo_** and submit the `nodeAuthorization` &rarr; `add_well_known_node` call with the Peer ID of Charlie's node: `002408011220876a7b4984f98006dc8d666e28b60de307309835d775e7755cc770328cdacf2e` and Charlie as owner.
-
-Head over to **_Chainstate_** &rarr; **_Storage_** and select `nodeAuthorization` and the `wellKnownNodes()` function. Hit the `(+)` button and this will allow you to see the well known nodes, Alice, Bob and Charlie.
-
-:vertical_traffic_light: **NOTE:** refresh the page if it's not displaying any changes.
-
-See how to add more connections by following the original tutorial. For the purpose of this codebase, we've done what we need and have our permissioned network up and running. 
-
-## Adding Scheduler and Multisig Pallets to our Runtime
-
-The Scheduler pallet was added as per [the tutorial referred to above](https://substrate.dev/docs/en/tutorials/upgrade-a-chain/). Instead of using Sudo to validate the scheduled runtime upgrade, we're going to use the multisig functionality. 
-
-### Using the FRAME-based Multisig Pallet in our Permissioned Network
-
-:vertical_traffic_light: **NOTE:** if you're following this guide in your own node template and want to test a runtime upgrade, you can use one of the upgraded runtimes in this branches *'WASM-runtimes'* folder.
-
-Like with building any runtime, we have to first go into `runtime/src/lib.rs` and add the pallet we want to use.
-
-Here's the code that has been added to include the Multisig pallet to our runtime:
-
-```bash
-// --snip--
 parameter_types! {
-	// One storage item
-	pub const DepositBase: Balance = 100;
-	// Additional storage item 
-	pub const DepositFactor: Balance = 10;
-	pub const MaxSignatories: u16 = 100;
+	pub const CouncilMotionDuration: BlockNumber = 7 * DAYS;
+	pub const CouncilMaxProposals: u32 = 100;
+	pub const CouncilMaxMembers: u32 = 100;
 }
 
-impl pallet_multisig::Trait for Runtime {
+type CouncilCollective = pallet_collective::Instance1;
+
+impl pallet_collective::Trait<CouncilCollective> for Runtime {
+	type Origin = Origin;
+	type Proposal = Call;
 	type Event = Event;
-	type Call = Call;
-	type Currency = Balances;
-	type DepositBase = DepositBase;
-	type DepositFactor = DepositFactor;
-	type MaxSignatories = MaxSignatories;
+	type MotionDuration = CouncilMotionDuration;
+	type MaxProposals = CouncilMaxProposals;
+	type MaxMembers = CouncilMaxMembers;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
-	
-//And add the following to the construct_runtime! macro
-	// --snip--
-`Multisig: pallet_multisig::{Module, Call, Storage, Event<T>},` 
-	// --snip--
 ```
-Following this, we have to tell our runtime about any dependencies it must know about in the `/runtime/Cargo.toml` file:
+This pallet is key for any setup where governance involves more than one decision maker (i.e. other than using Sudo related dispatches).
 
-```
-[dependencies]
-	// --snip--
-pallet-multisig = { default-features = false, version = '2.0.0'}
-	// --snip--
-std = [
-	// --snip--
-'pallet-multisig/std',
-]
-```
-Always check that things resolve correctly:
+### Treasury
+:moneybag: The Treasury module provides a "pot" of funds that can be managed by stakeholders in the system and a structure for making spending proposals from this pot.
+
+- treasury::Trait
+- Call
+
+[See source code](https://github.com/paritytech/substrate/tree/master/frame/treasury) 
+
+Treasury is a core component to goverance too. In Polkadot, it's used by a wide array of other pallets such as ``pallet_staking``, ``pallet_identity``, ``pallet_democracy`` and ``pallet_elections_phragmen``. With incentive driven behavior as a key design of any decentralized system, a pot of funds is a useful tool for setting up decision making mechanisms. Systems of governance can be formally specified based on what is at stake and what happens to staked assets once a decision is passed. In this way, Treasury can be linked to (re)distributing funds and reputation as well as enforcing consequences for decisions that have been voted upon.
+
+Below shows how ``pallet_treasury `` is implemented in Polkadot. Notice ``ApproveOrigin``: this is where the approval must come from &mdash; ``pallet_collective`` in Polkadot's case, which has already been defined as ``CouncilCollective``. ( :curious: _TODO: What could be alternative sources for origin if any?_)
+
 ```bash
-cargo check -p node-template-runtime
+type ApproveOrigin = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>
+>;
+
+impl pallet_treasury::Trait for Runtime {
+	type ModuleId = TreasuryModuleId;
+	type Currency = Balances;
+	type ApproveOrigin = ApproveOrigin;
+	type RejectOrigin = MoreThanHalfCouncil;
+	type Tippers = ElectionsPhragmen;
+	type TipCountdown = TipCountdown;
+	type TipFindersFee = TipFindersFee;
+	type TipReportDepositBase = TipReportDepositBase;
+	type DataDepositPerByte = DataDepositPerByte;
+	type Event = Event;
+	type OnSlash = Treasury;
+	type ProposalBond = ProposalBond;
+	type ProposalBondMinimum = ProposalBondMinimum;
+	type SpendPeriod = SpendPeriod;
+	type Burn = Burn;
+	type BountyDepositBase = BountyDepositBase;
+	type BountyDepositPayoutDelay = BountyDepositPayoutDelay;
+	type BountyUpdatePeriod = BountyUpdatePeriod;
+	type MaximumReasonLength = MaximumReasonLength;
+	type BountyCuratorDeposit = BountyCuratorDeposit;
+	type BountyValueMinimum = BountyValueMinimum;
+	type BurnDestination = ();
+	type WeightInfo = weights::pallet_treasury::WeightInfo<Runtime>;
+}
 ```
-:rocket: Now we can try a scheduled multisig chain upgrade!
 
-## Multisig Runtime Upgrade
-1. :construction_worker: Reassign your Sudo key to any multisig address you created (Go to: **_Developer_ &rarr; _Sudo_ &rarr; _Set sudo key_**)
-![Setmultisig](/screenshots/set-sudo-to-multisig.png)
+### Elections
+:inbox_tray: In a Substrate-based system of governance, including an Elections pallet allows the system to specify how the ``Treasury`` and ``Collective`` pallets interact. There are two Elections pallets in Substrate: one more simple (Elections) and one more sophisticated (Elections Phragmen).
 
-2. :warning: Follow the steps in [this tutorial](https://substrate.dev/docs/en/tutorials/upgrade-a-chain/scheduled-upgrade) to schedule an upgrade. 
+Polkadot implements the [Elections Phragmen pallet](https://crates.parity.io/pallet_elections_phragmen/trait.Trait.html#associatedtype.CurrencyToVote) to do its governance magic. It's configured to have weekly council elections with 13 initial members.
 
-As the screenshots show below, we're aiming to schedule an upgrade from version 1 to 2 (using the WASM file provided in this repo) at block 150 :clock3:
-![ScheduleUpgrade](/screenshots/schedule-upgrade-0.png)
+```bash
+parameter_types! {
+	pub const CandidacyBond: Balance = 100 * DOLLARS;
+	pub const VotingBond: Balance = 5 * DOLLARS;
+	/// Weekly council elections; scaling up to monthly eventually.
+	pub const TermDuration: BlockNumber = 7 * DAYS;
+	/// 13 members initially, to be increased to 23 eventually.
+	pub const DesiredMembers: u32 = 13;
+	pub const DesiredRunnersUp: u32 = 20;
+	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
+}
+// Make sure that there are no more than `MaxMembers` members elected via phragmen.
+const_assert!(DesiredMembers::get() <= CouncilMaxMembers::get());
 
-Alice is the first to approve it 
-![AliceSigns](/screenshots/schedule-updgrade-1.png)
-
-Charlie approves it
-![CharlieSigns](/screenshots/schedule-upgrade-2.png)
-
-3. :memo: You'll need to have the minimum threshold of signators sign the scheduled upgrade for it to go through
-
-Great, the transaction is approved (the multisig account's threshold was 2/3) :muscle: &mdash; we can see it in the event calendar :calendar:
-![EventCal](/screenshots/calandar-view.png)
-
-4. :eyes: If it worked, your version number should update itslef once your chain reaches the scheduled update block :sunglasses:
-
-![EventsPostUpgrade](/screenshots/events-explorer.png)
-
+impl pallet_elections_phragmen::Trait for Runtime {
+	type Event = Event;
+	type ModuleId = ElectionsPhragmenModuleId;
+	type Currency = Balances;
+	type ChangeMembers = Council;
+	type InitializeMembers = Council;
+	type CurrencyToVote = frame_support::traits::U128CurrencyToVote;
+	type CandidacyBond = CandidacyBond;
+	type VotingBond = VotingBond;
+	type LoserCandidate = Treasury;
+	type BadReport = Treasury;
+	type KickedMember = Treasury;
+	type DesiredMembers = DesiredMembers;
+	type DesiredRunnersUp = DesiredRunnersUp;
+	type TermDuration = TermDuration;
+	type WeightInfo = ();
+}
 ```
-//TODO: Implement governance for validating runtime upgrade
-//TODO: Remove Sudo entirely and make multisig default
-//TODO: Make UI for nodes to interact with peers and for new nodes to join
-```
+
+:mag_right: Notice how in this example, ``Elections`` interacts with both ``Treasury`` and ``Council``:
+- ``ChangeMembers`` defines what to do when members change, which relies on ``Council``
+- ``InitializeMembers`` defines what to do with genesis members, which relies on ``Council``
+- ``CandidacyBond`` defines how much should  be locked up in order to submit one's candicacy
+- ``VotingBond`` defines how much should be locked up in order to be able to submit votes, which requires ``Treasury``
+- ``LoserCandidate``, ``BadReport`` and ``KickedMember`` are various handlers for different unbalanced reduction scenarios which each require ``Treasury`` 
+
+
+_TODO: Difference between the two Elections pallets? Module import issues? Add examples of different configurations_
+
+#### Modifications 
+
+We need to make a few modifications in runtime/lib to have these pallets work in our codebase. These are:
+
+- add ``ModuleId`` and ``Percent`` to ``use sp_runtime::{ }``
+- Adding the ``EnsureOneOf`` struct (``use frame_system::{EnsureRoot, EnsureOneOf}``) to give runtime options for authorizing certain properties of the nodes that it can use
+- ``EnsureOneOf`` will be required to implement the Council pallet. (:warning: _TODO: A little about Origins and configuring them_ )
+
+			```bash 
+			type ApproveOrigin = EnsureOneOf<
+				AccountId,
+				EnsureRoot<AccountId>,
+				pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>
+			>;
+
+			type MoreThanHalfCouncil = EnsureOneOf<
+				AccountId,
+				EnsureRoot<AccountId>,
+				pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>
+			>;
+			```
+
+- The ``elections_phragmen`` pallet requires a ``LockIdentifier`` type from a trait in ``frame_support``. Refer to its documentation [here](https://docs.rs/frame-support/2.0.0/frame_support/traits/type.LockIdentifier.html).
+
+- In node/src/chain_spec.rs, add the ``GenesisConfig { }`` for each pallet. Look at each pallets' documentation for reference: [Collective](https://docs.rs/pallet-collective/2.0.0/pallet_collective/struct.GenesisConfig.html) and [Elections](https://docs.rs/pallet-elections-phragmen/2.0.0/pallet_elections_phragmen/struct.GenesisConfig.html).
+
+## 3. Examples for Customizing Governance 
+
+
+_TODO: Add more cross references; Add examples of different configurations and their functionality_
