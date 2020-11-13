@@ -1,8 +1,7 @@
-use node_runtime::ElectionsConfig;
 use sp_core::{Pair, Public, sr25519};
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, SystemConfig, WASM_BINARY, Signature
+	SudoConfig, SystemConfig, WASM_BINARY, Signature, ElectionsPhragmenConfig
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
@@ -177,7 +176,7 @@ fn testnet_genesis(
 				phantom: Default::default(),
 			}),
 		
-		pallet_elections_phragmen: Some(ElectionsConfig {
+		pallet_elections_phragmen: Some(ElectionsPhragmenConfig {
 			members: vec![],
 		}),
 	}
