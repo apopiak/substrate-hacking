@@ -1,12 +1,14 @@
 # Governance on Substrate
+:warning: This is work in progress, there's still a bunch of stuff to be added. Feel free to contribute :smiley:
 
-The goal here is to document how different components for governance can interact with eachother within Substrate. There's a huge opportunity to use tools for adding governance to Substrate-built systems and understanding how they work and how they can be configured is an important building block for building systems with solid foundations. :hatching_chick:
+The goal here is to document how different components for governance can interact with eachother within Substrate. There's a huge opportunity to use tools for adding governance to Substrate-built systems and understanding how they work and how they can be configured is an important building block for creating systems with solid foundations to evolve. :hatching_chick:
 
-:bulb: Some use cases for using governance as a core component:
+:bulb: Some use cases for thinking of governance as a core component to a given system:
 
 - Collective management layers 
 - Social interaction layers 
-- Device to device communication 
+- Device to device communication or multi-agent systems
+- Content up-voting 
 
 :memo: The structure of this document is:
 1. :hammer: First breakdown the key components for implementing governance with Substrate 
@@ -15,7 +17,13 @@ The goal here is to document how different components for governance can interac
 
 ## 1. Breaking Things Down
 
-We'll use how Polkadot implements governance as a reference to our guide. Although we won't look at all of these, here are the difference parts to its Governance machine:
+We'll use how Polkadot implements governance as a reference to our guide and see (a) how its governance pallets interact with eachother and (b) how their parameters are configured. Polkadot's governance system is composed of three main elements:
+
+1. _Stake weighted referenda_ - public motions to pass for voting by council 
+2. _A treasury_ - a reserve made up of DOT tokens from slashing or sub-optimal staking 
+3. _A Council_ - made up of two groups (standard committee and technical committee)
+
+Although we won't look at all of these (for now), here are the difference parts to its Governance machine:
 
 ```bash
 // Governance stuff.
@@ -26,6 +34,11 @@ We'll use how Polkadot implements governance as a reference to our guide. Althou
 		TechnicalMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>} = 18,
 		Treasury: pallet_treasury::{Module, Call, Storage, Event<T>} = 19,
 ```
+
+## What is governance used for in Polkadot and Kusama?
+- To modify parameters of the system like voting periods and cool-off periods
+- Deciding on runtime code updates
+- Specify how parachains interact
 
 For our purposes, here are the pallets we'll look at:
 
@@ -69,9 +82,9 @@ This pallet is key for any setup where governance involves more than one decisio
 
 [See source code](https://github.com/paritytech/substrate/tree/master/frame/treasury) 
 
-Treasury is a core component to goverance too. In Polkadot, it's used by a wide array of other pallets such as ``pallet_staking``, ``pallet_identity``, ``pallet_democracy`` and ``pallet_elections_phragmen``. With incentive driven behavior as a key design of any decentralized system, a pot of funds is a useful tool for setting up decision making mechanisms. Systems of governance can be formally specified based on what is at stake and what happens to staked assets once a decision is passed. In this way, Treasury can be linked to (re)distributing funds and reputation as well as enforcing consequences for decisions that have been voted upon.
+Treasury is a core component to goverance too. In Polkadot, it's used by a wide array of other pallets such as ``pallet_staking``, ``pallet_identity``, ``pallet_democracy`` and ``pallet_elections_phragmen``. With incentive driven behavior as a key design of any decentralized system, a pot of funds is a useful tool for setting up decision making mechanisms. Systems of governance can be formally specified based on what is at stake and what happens to staked assets once a decision is passed. In Polkadot and Kusama, the Treasury collects funds from slashing stakes and non-optimal staking during consensus. The accumulation of these funds are used by the council to invest in and improve the network and ecosystem by [sponsoring research and awareness] (https://polkadot.network/writing-history-the-first-teams-submit-their-proposal-to-the-polkadot-treasury-2/).
 
-Below shows how ``pallet_treasury `` is implemented in Polkadot. Notice ``ApproveOrigin``: this is where the approval must come from &mdash; ``pallet_collective`` in Polkadot's case, which has already been defined as ``CouncilCollective``. ( :curious: _TODO: What could be alternative sources for origin if any?_)
+Below shows how ``pallet_treasury `` is implemented in Polkadot. Notice ``ApproveOrigin``: this is where the approval must come from &mdash; ``pallet_collective`` in Polkadot's case, which has already been defined as ``CouncilCollective``. ( :thinking: _TODO: Show examples for implementing different sources of origin + why its important_)
 
 ```bash
 type ApproveOrigin = EnsureOneOf<
@@ -108,9 +121,9 @@ impl pallet_treasury::Trait for Runtime {
 ```
 
 ### Elections
-:inbox_tray: In a Substrate-based system of governance, including an Elections pallet allows the system to specify how the ``Treasury`` and ``Collective`` pallets interact. There are two Elections pallets in Substrate: one more simple (Elections) and one more sophisticated (Elections Phragmen).
+:inbox_tray: In a Substrate-based system of governance, including an Elections pallet implicitly specifies how the ``Treasury`` and ``Collective`` pallets interact. Election modules central to staking mechanims as well as voting on referenda. There are two Elections pallets in Substrate: one more simple (Elections) and one more sophisticated (Elections Phragmen).
 
-Polkadot implements the [Elections Phragmen pallet](https://crates.parity.io/pallet_elections_phragmen/trait.Trait.html#associatedtype.CurrencyToVote) to do its governance magic. It's configured to have weekly council elections with 13 initial members.
+Polkadot implements the [Elections Phragmen pallet](https://crates.parity.io/pallet_elections_phragmen/trait.Trait.html#associatedtype.CurrencyToVote) to do its governance magic. It's an implementation of Elections with an algorithm to allow a more expressive way to represent voter views. It's configured to have weekly council elections with 13 initial members. 
 
 ```bash
 parameter_types! {
@@ -181,7 +194,50 @@ We need to make a few modifications in runtime/lib to have these pallets work in
 
 - In node/src/chain_spec.rs, add the ``GenesisConfig { }`` for each pallet. Look at each pallets' documentation for reference: [Collective](https://docs.rs/pallet-collective/2.0.0/pallet_collective/struct.GenesisConfig.html) and [Elections](https://docs.rs/pallet-elections-phragmen/2.0.0/pallet_elections_phragmen/struct.GenesisConfig.html).
 
-## 3. Examples for Customizing Governance 
+## 3. Tailoring Governance
+Now that we've seen how governance can be configured, let's dive into how different forms of governance can be implemented to address specific goals of a given system. As [Bill Laboon](https://www.youtube.com/watch?v=9B10wX9Mphc) puts it, there will always be a tradeoff when implementing a system of governance &mdash the only alternative would be to appoint a dictator. 
+
+### Setting Goals and Parameters
+Step 0 is  to outline what governance goals need to be set. For example, in Polkadot the existance of the Technical Committee addresses the goal that there needs to be a way for fast-tracking sytsem-critical issues when they arise. When designing an infrastructure for blockchain governance, goals need to be aligned with the possibility of things going terribly wrong.
+
+:thinking: A few things that could go wrong...
+- Sybil attacks 
+- Stealing funds 
+- 51% malicious votes
+
+:bulb: Parameters to consider:
+- Who can vote? What power does each vote hold?
+- How long is the voting period? 
+- How long is the enactment period?
+- How long is stake locked up for?
+- What are the sanctions for bad actors?
+- What percentage of stake approves a vote?
+- Is there flexibility with locked stake?
+- How many proposals can there be in a proposal queue / what's the voting timetable?
+- What happens to funds in a treasury?
+
+Other things to consider:
+* Who are your stakeholders? For example in Polkadot we have:
+	- Node operators
+	- Long term hodlers
+	- Bonded validators
+	- Parachain operators 
+	- Dapp teams
+	- Client implementers 
+	
+### Post-genesis Governance
+Here are some examples of additional governance mechanisms planned to be added to Kusama:
+- **Oracle Committee**: memembers paid to vote on objectively true or false statements
+- **Spontaneous Subject Committees**: specialized groups can register to vote on very specialized referenda 
+
 
 
 _TODO: Add more cross references; Add examples of different configurations and their functionality_
+
+Sources:
+https://wiki.polkadot.network/docs/en/learn-governance
+
+https://github.com/paritytech/polkadot/wiki/Governance
+
+https://polkadot.network/kusama-rollout-and-governance/
+
