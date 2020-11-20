@@ -21,7 +21,7 @@ We'll use how Polkadot implements governance as a reference to our guide and see
 
 1. _Stake weighted referenda_ - public motions to pass for voting by council 
 2. _A treasury_ - a reserve made up of DOT tokens from slashing or sub-optimal staking 
-3. _A Council_ - made up of two groups (standard committee and technical committee)
+3. _A Council_ - made of collectives, of which Polkadot currently has two (a "standard committee" and "technical committee")
 
 Although we won't look at all of these (for now), here are the difference parts to its Governance machine:
 
@@ -121,9 +121,9 @@ impl pallet_treasury::Trait for Runtime {
 ```
 
 ### Elections
-:inbox_tray: In a Substrate-based system of governance, including an Elections pallet implicitly specifies how the ``Treasury`` and ``Collective`` pallets interact. Election modules central to staking mechanims as well as voting on referenda. There are two Elections pallets in Substrate: one more simple (Elections) and one more sophisticated (Elections Phragmen).
+:inbox_tray: In a Substrate-based system of governance, the Elections-Phragmén pallet interacts closely with the ``Collective`` pallet. In Polkadot, its what facilitates electing members of council. It can have other useful applications too, like community voting on NFT assets or electing other types of content. (_TODO: Include an example showing the Elections Phragmén pallet being used in a different context than just council politics_)
 
-Polkadot implements the [Elections Phragmen pallet](https://crates.parity.io/pallet_elections_phragmen/trait.Trait.html#associatedtype.CurrencyToVote) to do its governance magic. It's an implementation of Elections with an algorithm to allow a more expressive way to represent voter views. It's configured to have weekly council elections with 13 initial members. 
+Polkadot implements the [Elections-Phragmén pallet](https://crates.parity.io/pallet_elections_phragmen/trait.Trait.html#associatedtype.CurrencyToVote) to do its governance magic. It's an implementation of Elections with an algorithm to allow a more expressive way to represent voter views. It's configured to have weekly council elections with 13 initial members. 
 
 ```bash
 parameter_types! {
@@ -158,12 +158,12 @@ impl pallet_elections_phragmen::Trait for Runtime {
 }
 ```
 
-:mag_right: Notice how in this example, ``Elections`` interacts with both ``Treasury`` and ``Council``:
+:mag_right: Notice how in this example, ``Elections-Phragmén`` interacts with both ``Treasury`` and ``Council``:
 - ``ChangeMembers`` defines what to do when members change, which relies on ``Council``
 - ``InitializeMembers`` defines what to do with genesis members, which relies on ``Council``
 - ``CandidacyBond`` defines how much should  be locked up in order to submit one's candicacy
 - ``VotingBond`` defines how much should be locked up in order to be able to submit votes, which requires ``Treasury``
-- ``LoserCandidate``, ``BadReport`` and ``KickedMember`` are various handlers for different unbalanced reduction scenarios which each require ``Treasury`` 
+- ``LoserCandidate``, ``BadReport`` and ``KickedMember`` are handlers for different unbalanced reduction scenarios which interact with ``Treasury`` to handle someone getting slashed
 
 
 _TODO: Difference between the two Elections pallets? Module import issues? Add examples of different configurations_
