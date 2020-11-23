@@ -21,7 +21,12 @@ We'll use how Polkadot implements governance as a reference to our guide and see
 
 1. _Stake weighted referenda_ - public motions to pass for voting by council 
 2. _A treasury_ - a reserve made up of DOT tokens from slashing or sub-optimal staking 
-3. _A Council_ - made of collectives, of which Polkadot currently has two (a "standard committee" and "technical committee")
+3. _A Council_ - made of collectives, of which Polkadot currently has two (the "standard" council and the "technical committee")
+
+### What is governance used for in Polkadot? :crown:
+- To modify parameters of the system like voting periods and cool-off periods
+- Deciding on runtime code updates
+- To specify how parachains interact
 
 Although we won't look at all of these (for now), here are the difference parts to its Governance machine:
 
@@ -35,11 +40,6 @@ Although we won't look at all of these (for now), here are the difference parts 
 		Treasury: pallet_treasury::{Module, Call, Storage, Event<T>} = 19,
 ```
 
-## What is governance used for in Polkadot and Kusama?
-- To modify parameters of the system like voting periods and cool-off periods
-- Deciding on runtime code updates
-- Specify how parachains interact
-
 For our purposes, here are the pallets we'll look at:
 
 ```Council``` - https://docs.rs/pallet-collective/2.0.0/pallet_collective/ 
@@ -50,7 +50,7 @@ For our purposes, here are the pallets we'll look at:
 
 ## 2. Pallet Interactions
 ### Council 
-:family: Polkadot uses what's referred to as a CouncilCollective for their voting members or committees. The way ``CouncilCollective`` is created is by instantiating ``pallet_collective`` in runtime/lib.rs. It's traits define what council rules are enforced and how.
+:family: Polkadot uses what's referred to as a CouncilCollective for their voting members or committees. The way ``CouncilCollective`` and ``TechnicalCollective`` are created is by instantiating ``pallet_collective`` in runtime/lib.rs. Each make use of different instances of the pallet, by way of its structs. For both collectives, the traits define what the council and committee rules are and how they are enforced.
 
 ```bash
 parameter_types! {
@@ -69,22 +69,53 @@ impl pallet_collective::Trait<CouncilCollective> for Runtime {
 	type MaxProposals = CouncilMaxProposals;
 	type MaxMembers = CouncilMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
-	type WeightInfo = ();
+	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;;  
+}
+
+parameter_types! {
+	pub const TechnicalMotionDuration: BlockNumber = 7 * DAYS;
+	pub const TechnicalMaxProposals: u32 = 100;
+	pub const TechnicalMaxMembers: u32 = 100;
+}
+
+type TechnicalCollective = pallet_collective::Instance2;
+
+impl pallet_collective::Trait<TechnicalCollective> for Runtime {
+	type Origin = Origin;
+	type Proposal = Call;
+	type Event = Event;
+	type MotionDuration = TechnicalMotionDuration;
+	type MaxProposals = TechnicalMaxProposals;
+	type MaxMembers = TechnicalMaxMembers;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
 }
 ```
-This pallet is key for any setup where governance involves more than one decision maker (i.e. other than using Sudo related dispatches).
+
+The ``pallet_collective`` pallet is key for any setup where governance involves more than one group of decision makers. Other things to note:
+
+- Different collectives are instantiated using the structs (Instance1, Instance2 etc.) from ``pallet_collective``
+- Each collective can be configured with their own parameters
+
+_TODO: Add where these collectives are used in other pallets like Members and Democracy; how pallet_membership makes use of pallet_collective and why _
 
 ### Treasury
 :moneybag: The Treasury module provides a "pot" of funds that can be managed by stakeholders in the system and a structure for making spending proposals from this pot.
 
-- treasury::Trait
-- Call
+It can be used for: 
+- collecting funds 
+- setting bounties 
+- tipping an address (or group of addresses) 
 
 [See source code](https://github.com/paritytech/substrate/tree/master/frame/treasury) 
 
-Treasury is a core component to goverance too. In Polkadot, it's used by a wide array of other pallets such as ``pallet_staking``, ``pallet_identity``, ``pallet_democracy`` and ``pallet_elections_phragmen``. With incentive driven behavior as a key design of any decentralized system, a pot of funds is a useful tool for setting up decision making mechanisms. Systems of governance can be formally specified based on what is at stake and what happens to staked assets once a decision is passed. In Polkadot and Kusama, the Treasury collects funds from slashing stakes and non-optimal staking during consensus. The accumulation of these funds are used by the council to invest in and improve the network and ecosystem by [sponsoring research and awareness] (https://polkadot.network/writing-history-the-first-teams-submit-their-proposal-to-the-polkadot-treasury-2/).
+Treasury is a core component to goverance too. In Polkadot, it's used by a wide array of other pallets such as ``pallet_staking``, ``pallet_identity``, ``pallet_democracy`` and ``pallet_elections_phragmen``. With incentive driven behavior as a key design of any decentralized system, a pot of funds is a useful tool for storing and making use of value that can motivate benevolant activity. Treasuries can have their own systems of governance attached to them, governing who has access to funds and under what conditions. By specifying different membership sets (using [``pallet_membership``](https://crates.parity.io/pallet_membership/index.html)), a system can be designed to have a treasury for each membership group, like treasuries across different municipalities for example.
 
-Below shows how ``pallet_treasury `` is implemented in Polkadot. Notice ``ApproveOrigin``: this is where the approval must come from &mdash; ``pallet_collective`` in Polkadot's case, which has already been defined as ``CouncilCollective``. ( :thinking: _TODO: Show examples for implementing different sources of origin + why its important_)
+In Polkadot, there is a single Treasury configured to collect funds from slashing stakes and non-optimal staking during consensus. The accumulation of these funds are used by the council to invest in and improve the network and ecosystem by [sponsoring research and awareness](https://polkadot.network/writing-history-the-first-teams-submit-their-proposal-to-the-polkadot-treasury-2/).
+
+Below shows how ``pallet_treasury `` is implemented in Polkadot. Notice ``ApproveOrigin``, which is where the approval must come from &#151; ``CouncilCollective`` in Polkadot's case.
+
+( :thinking: _TODO: Show examples for implementing different sources of origin + why its important_)
 
 ```bash
 type ApproveOrigin = EnsureOneOf<
@@ -121,9 +152,15 @@ impl pallet_treasury::Trait for Runtime {
 ```
 
 ### Elections
-:inbox_tray: In a Substrate-based system of governance, the Elections-Phragmén pallet interacts closely with the ``Collective`` pallet. In Polkadot, its what facilitates electing members of council. It can have other useful applications too, like community voting on NFT assets or electing other types of content. (_TODO: Include an example showing the Elections Phragmén pallet being used in a different context than just council politics_)
+:inbox_tray: In a Substrate-based system of governance, the Elections-Phragmén pallet interacts closely with the ``Collective`` pallet. In Polkadot, its what facilitates electing members of council. It can have other useful applications too, like community voting on NFT assets or electing other types of content.
 
-Polkadot implements the [Elections-Phragmén pallet](https://crates.parity.io/pallet_elections_phragmen/trait.Trait.html#associatedtype.CurrencyToVote) to do its governance magic. It's an implementation of Elections with an algorithm to allow a more expressive way to represent voter views. It's configured to have weekly council elections with 13 initial members. 
+(_TODO: Include an example showing the Elections Phragmén pallet being used in a non-political context_)
+
+Polkadot implements the [Elections-Phragmén pallet](https://crates.parity.io/pallet_elections_phragmen/trait.Trait.html#associatedtype.CurrencyToVote) to do its governance magic. It's an implementation of [Elections](https://crates.parity.io/pallet_elections/index.html) (now depreciated) with an algorithm to allow a more expressive way to represent voter views. 
+
+The algorithm basically fills up a specified number of seats in several election rounds by allowing voters to vote for multiple candidates. The candidate with the most amount of votes gets the seat for each round, while remaining candidates carry their past votes with them in the next round. Learn more about how it works [here](https://wiki.polkadot.network/docs/en/learn-phragmen).
+
+In Polkadot, it's configured to have weekly council elections with 13 initial members (also the number of seats).
 
 ```bash
 parameter_types! {
@@ -163,10 +200,10 @@ impl pallet_elections_phragmen::Trait for Runtime {
 - ``InitializeMembers`` defines what to do with genesis members, which relies on ``Council``
 - ``CandidacyBond`` defines how much should  be locked up in order to submit one's candicacy
 - ``VotingBond`` defines how much should be locked up in order to be able to submit votes, which requires ``Treasury``
-- ``LoserCandidate``, ``BadReport`` and ``KickedMember`` are handlers for different unbalanced reduction scenarios which interact with ``Treasury`` to handle someone getting slashed
+- ``LoserCandidate``, ``BadReport`` and ``KickedMember`` are handlers for different unbalanced reduction scenarios which interact with ``Treasury`` to handle an address getting slashed
 
 
-_TODO: Difference between the two Elections pallets? Module import issues? Add examples of different configurations_
+_TODO: Add examples of different configurations for Elections; how Elections is used in Democracy; how Elections works in pallet_treasury::Tippers _
 
 #### Modifications 
 
@@ -174,7 +211,7 @@ We need to make a few modifications in runtime/lib to have these pallets work in
 
 - add ``ModuleId`` and ``Percent`` to ``use sp_runtime::{ }``
 - Adding the ``EnsureOneOf`` struct (``use frame_system::{EnsureRoot, EnsureOneOf}``) to give runtime options for authorizing certain properties of the nodes that it can use
-- ``EnsureOneOf`` will be required to implement the Council pallet. (:warning: _TODO: A little about Origins and configuring them_ )
+- ``EnsureOneOf`` will be required to implement the Council pallet. 
 
 			```bash 
 			type ApproveOrigin = EnsureOneOf<
@@ -194,8 +231,10 @@ We need to make a few modifications in runtime/lib to have these pallets work in
 
 - In node/src/chain_spec.rs, add the ``GenesisConfig { }`` for each pallet. Look at each pallets' documentation for reference: [Collective](https://docs.rs/pallet-collective/2.0.0/pallet_collective/struct.GenesisConfig.html) and [Elections](https://docs.rs/pallet-elections-phragmen/2.0.0/pallet_elections_phragmen/struct.GenesisConfig.html).
 
+(:warning: _TODO: Add a little about Origins and configuring them_ )
+
 ## 3. Tailoring Governance
-Now that we've seen how governance can be configured, let's dive into how different forms of governance can be implemented to address specific goals of a given system. As [Bill Laboon](https://www.youtube.com/watch?v=9B10wX9Mphc) puts it, there will always be a tradeoff when implementing a system of governance &mdash the only alternative would be to appoint a dictator. 
+Now that we've seen how governance can be configured, let's dive into how different forms of governance can be implemented to address specific goals of a given system. As [Bill Laboon](https://www.youtube.com/watch?v=9B10wX9Mphc) puts it, there will always be a tradeoff when implementing a system of governance &#151; the only alternative would be to appoint a dictator. 
 
 ### Setting Goals and Parameters
 Step 0 is  to outline what governance goals need to be set. For example, in Polkadot the existance of the Technical Committee addresses the goal that there needs to be a way for fast-tracking sytsem-critical issues when they arise. When designing an infrastructure for blockchain governance, goals need to be aligned with the possibility of things going terribly wrong.
@@ -205,6 +244,8 @@ Step 0 is  to outline what governance goals need to be set. For example, in Polk
 - Stealing funds 
 - 51% malicious votes
 
+_TODO: what else ? _
+
 :bulb: Parameters to consider:
 - Who can vote? What power does each vote hold?
 - How long is the voting period? 
@@ -212,8 +253,9 @@ Step 0 is  to outline what governance goals need to be set. For example, in Polk
 - How long is stake locked up for?
 - What are the sanctions for bad actors?
 - What percentage of stake approves a vote?
-- Is there flexibility with locked stake?
-- How many proposals can there be in a proposal queue / what's the voting timetable?
+- What sort of flexibility exists for locked stake?
+- How many proposals can there be in a proposal queue?
+- What's the voting timetable?
 - What happens to funds in a treasury?
 
 Other things to consider:
@@ -231,8 +273,9 @@ Here are some examples of additional governance mechanisms planned to be added t
 - **Spontaneous Subject Committees**: specialized groups can register to vote on very specialized referenda 
 
 
-
 _TODO: Add more cross references; Add examples of different configurations and their functionality_
+
+A quote from a Polkadot core developer and council member: _"[Wei] believes that voting is only the last step of democracy. Detailed discussions and community engagements are essential before voting, in order to better understand the proposals, look into any potential issues, and avoid unnecessary contentions. (Core developer and council member"_.[Source](https://that.world/~wei/polkadot/council/)
 
 Sources:
 https://wiki.polkadot.network/docs/en/learn-governance
