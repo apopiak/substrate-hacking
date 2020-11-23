@@ -1,6 +1,17 @@
-# Governance on Substrate
 :warning: This is work in progress, there's still a bunch of stuff to be added. Feel free to contribute :smiley:
 
+## Table of contents
+1. [Overview](#1-overview)
+2. [Breaking Things Down](#2-breaking-things-down)
+   * [What is governance used for in Polkadot?](#what-is-governance-used-for-in-polkadot) 
+3. [Pallet Interactions](#3-pallet-interactions)
+   * [Council](#council)
+   * [Treasury](#treasury)
+   * [Elections](#elections)
+4. [Modifications](#4-modifications)
+5. [Tailoring Governance](5-tailoring-governance)
+
+# 1. Overview
 The goal here is to document how different components for governance can interact with eachother within Substrate. There's a huge opportunity to use tools for adding governance to Substrate-built systems and understanding how they work and how they can be configured is an important building block for creating systems with solid foundations to evolve. :hatching_chick:
 
 :bulb: Some use cases for thinking of governance as a core component to a given system:
@@ -15,7 +26,7 @@ The goal here is to document how different components for governance can interac
 2. :mag_right: Analyzse how these pallets interact inside Polkadots runtime and implement into this Substrate template fork _(IN PROGRESS)_
 3. Show examples of how to customize governance based on additional pallet configurations _(TODO)_
 
-## 1. Breaking Things Down
+## 2. Breaking Things Down
 
 We'll use how Polkadot implements governance as a reference to our guide and see (a) how its governance pallets interact with eachother and (b) how their parameters are configured. Polkadot's governance system is composed of three main elements:
 
@@ -23,7 +34,8 @@ We'll use how Polkadot implements governance as a reference to our guide and see
 2. _A treasury_ - a reserve made up of DOT tokens from slashing or sub-optimal staking 
 3. _A Council_ - made of collectives, of which Polkadot currently has two (the "standard" council and the "technical committee")
 
-### What is governance used for in Polkadot? :crown:
+### What is governance used for in Polkadot? 
+:crown:
 - To modify parameters of the system like voting periods and cool-off periods
 - Deciding on runtime code updates
 - To specify how parachains interact
@@ -48,7 +60,7 @@ For our purposes, here are the pallets we'll look at:
 
 ```ElectionsPhragmen``` -  https://docs.rs/pallet-elections-phragmen/2.0.0/pallet_elections_phragmen/
 
-## 2. Pallet Interactions
+## 3. Pallet Interactions
 ### Council 
 :family: Polkadot uses what's referred to as a CouncilCollective for their voting members or committees. The way ``CouncilCollective`` and ``TechnicalCollective`` are created is by instantiating ``pallet_collective`` in runtime/lib.rs. Each make use of different instances of the pallet, by way of its structs. For both collectives, the traits define what the council and committee rules are and how they are enforced.
 
@@ -205,7 +217,7 @@ impl pallet_elections_phragmen::Trait for Runtime {
 
 _TODO: Add examples of different configurations for Elections; how Elections is used in Democracy; how Elections works in pallet_treasury::Tippers _
 
-#### Modifications 
+## 4. Modifications 
 
 We need to make a few modifications in runtime/lib to have these pallets work in our codebase. These are:
 
@@ -233,7 +245,7 @@ We need to make a few modifications in runtime/lib to have these pallets work in
 
 (:warning: _TODO: Add a little about Origins and configuring them_ )
 
-## 3. Tailoring Governance
+## 5. Tailoring Governance
 Now that we've seen how governance can be configured, let's dive into how different forms of governance can be implemented to address specific goals of a given system. As [Bill Laboon](https://www.youtube.com/watch?v=9B10wX9Mphc) puts it, there will always be a tradeoff when implementing a system of governance &#151; the only alternative would be to appoint a dictator. 
 
 ### Setting Goals and Parameters
