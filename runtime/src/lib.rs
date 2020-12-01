@@ -347,7 +347,7 @@ parameter_types! {
 	pub const CandidacyBond: Balance = 5 * DOLLARS; // modified for demo
 	pub const VotingBond: Balance = 1 * DOLLARS; 	// modified for demo
 	/// Council elections every week
-	pub const TermDuration: BlockNumber = 7 * DAYS; 
+	pub const TermDuration: BlockNumber = 7 * DAYS; // 7 days
 	/// 13 members initially, to be increased to 23 eventually.
 	pub const DesiredMembers: u32 = 3;
 	pub const DesiredRunnersUp: u32 = 3;
@@ -377,7 +377,7 @@ impl pallet_elections_phragmen::Trait for Runtime {
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(5);
 	pub const ProposalBondMinimum: Balance = 1 * DOLLARS;
-	pub const SpendPeriod: BlockNumber = 70;			  // 7 minutes
+	pub const SpendPeriod: BlockNumber = 20;			// 2 minutes for demo
 	pub const Burn: Permill = Permill::from_percent(1);
 	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
 

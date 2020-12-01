@@ -113,6 +113,9 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 				get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
+				// add prefunded Treasury
+				hex_literal::hex!("6d6f646c70792f74727372790000000000000000000000000000000000000000").into(),
+
 				],
 			true,
 		),
