@@ -1,5 +1,7 @@
 :warning: This is work in progress, there's still a bunch of stuff to be added. Feel free to contribute :smiley:
 
+Check out [this document](https://docs.google.com/document/d/1Y61Fd_uZE3y1jeC_4EYe-ZOqaIfI1OAZYe9Xh75a8cs/edit?usp=sharing) for a list of ressources to learn more about Substrate and Polkadot Governance stuff.
+
 ## Table of contents
 1. [Overview](#1-overview)
 2. [Breaking Things Down](#2-breaking-things-down)
@@ -9,7 +11,10 @@
    * [Treasury](#treasury)
    * [Elections](#elections)
 4. [Modifications](#4-modifications)
-5. [Tailoring Governance](5-tailoring-governance)
+5. [Tailoring Governance](#5-tailoring-governance)
+   * [Setting Goals and Parameters](#Setting-Goals-and-Parameters) 
+   * [Demo](#governance-demo)
+6. [Other](#6-Other)
 
 # 1. Overview
 The goal here is to document how different components for governance can interact with eachother within Substrate. There's a huge opportunity to use tools for adding governance to Substrate-built systems and understanding how they work and how they can be configured is an important building block for creating systems with solid foundations to evolve. :hatching_chick:
@@ -109,7 +114,7 @@ The ``pallet_collective`` pallet is key for any setup where governance involves 
 - Different collectives are instantiated using the structs (Instance1, Instance2 etc.) from ``pallet_collective``
 - Each collective can be configured with their own parameters
 
-_TODO: Add where these collectives are used in other pallets like Members and Democracy; how pallet_membership makes use of pallet_collective and why _
+*TODO: Add where these collectives are used in other pallets like Members and Democracy; how pallet_membership makes use of pallet_collective and why*
 
 ### Treasury
 :moneybag: The Treasury module provides a "pot" of funds that can be managed by stakeholders in the system and a structure for making spending proposals from this pot.
@@ -127,7 +132,7 @@ In Polkadot, there is a single Treasury configured to collect funds from slashin
 
 Below shows how ``pallet_treasury `` is implemented in Polkadot. Notice ``ApproveOrigin``, which is where the approval must come from &#151; ``CouncilCollective`` in Polkadot's case.
 
-( :thinking: _TODO: Show examples for implementing different sources of origin + why its important_)
+ :thinking: _TODO: Show examples for implementing different sources of origin + why its important_
 
 ```bash
 type ApproveOrigin = EnsureOneOf<
@@ -166,7 +171,7 @@ impl pallet_treasury::Trait for Runtime {
 ### Elections
 :inbox_tray: In a Substrate-based system of governance, the Elections-Phragmén pallet interacts closely with the ``Collective`` pallet. In Polkadot, its what facilitates electing members of council. It can have other useful applications too, like community voting on NFT assets or electing other types of content.
 
-(_TODO: Include an example showing the Elections Phragmén pallet being used in a non-political context_)
+_TODO: Include an example showing the Elections Phragmén pallet being used in a non-political context_
 
 Polkadot implements the [Elections-Phragmén pallet](https://crates.parity.io/pallet_elections_phragmen/trait.Trait.html#associatedtype.CurrencyToVote) to do its governance magic. It's an implementation of [Elections](https://crates.parity.io/pallet_elections/index.html) (now depreciated) with an algorithm to allow a more expressive way to represent voter views. 
 
@@ -221,10 +226,15 @@ _TODO: Add examples of different configurations for Elections; how Elections is 
 
 We need to make a few modifications in runtime/lib to have these pallets work in our codebase. These are:
 
-- add ``ModuleId`` and ``Percent`` to ``use sp_runtime::{ }``
+- in ``lib.rs``:
+	- add ``ModuleId`` and ``Percent`` to ``use sp_runtime::{ }`` and ``u32_trait::{_1, _2, _3, _4, _5}`` to ``use sp_core::{ }``
+	- add ``use pallet_collective::EnsureProportionAtLeast`` 
+- in ``chain_spec`` add ``Balance`` to ``use node_runtime::{ }``
+
 - Adding the ``EnsureOneOf`` struct (``use frame_system::{EnsureRoot, EnsureOneOf}``) to give runtime options for authorizing certain properties of the nodes that it can use
 - ``EnsureOneOf`` will be required to implement the Council pallet. 
 
+e.g.:
 			```bash 
 			type ApproveOrigin = EnsureOneOf<
 				AccountId,
@@ -245,6 +255,7 @@ We need to make a few modifications in runtime/lib to have these pallets work in
 
 (:warning: _TODO: Add a little about Origins and configuring them_ )
 
+
 ## 5. Tailoring Governance
 Now that we've seen how governance can be configured, let's dive into how different forms of governance can be implemented to address specific goals of a given system. As [Bill Laboon](https://www.youtube.com/watch?v=9B10wX9Mphc) puts it, there will always be a tradeoff when implementing a system of governance &#151; the only alternative would be to appoint a dictator. 
 
@@ -255,8 +266,6 @@ Step 0 is  to outline what governance goals need to be set. For example, in Polk
 - Sybil attacks 
 - Stealing funds 
 - 51% malicious votes
-
-_TODO: what else ? _
 
 :bulb: Parameters to consider:
 - Who can vote? What power does each vote hold?
@@ -270,7 +279,7 @@ _TODO: what else ? _
 - What's the voting timetable?
 - What happens to funds in a treasury?
 
-Other things to consider:
+:8ball: Other things to consider:
 * Who are your stakeholders? For example in Polkadot we have:
 	- Node operators
 	- Long term hodlers
@@ -278,7 +287,50 @@ Other things to consider:
 	- Parachain operators 
 	- Dapp teams
 	- Client implementers 
-	
+
+### Governance demo
+The original goal was to explore how to add governance capabilities to the "permissioned-net" branch of this repo. The idea was that the permissioned network can be initialized with Council members (as the first 3 nodes) and have any additional node propose Treasury spends for the Council to vote on. Multi-sig accounts can be used for where funds are sent to.
+
+In practice, it can be thought of a rudimentary bicameral legislative body for budget proposals in the following types of scenarios:
+- :clubs: A sports club, where members can propose activities and there must be majority of directors that vote in favor for a proposal to be exectuted;
+- :mortar_board: A student council, where budget spends are proposed by special accounts (e.g. Events, Community Engagement etc.) and exected by vote of the Council
+- :calendar: An event management layer, for an executive committee and their event teams to coordinate budgets and engagement 
+
+Compile:
+
+```bash
+WASM_BUILD_TOOLCHAIN=nightly-2020-10-05 cargo build --release
+```
+To simply run this on a single node in developer mode do:
+
+```bash
+./target/release/node-template --dev --tmp
+```
+
+Run Alice's node in one terminal:
+
+```bash
+// Start with Alice's node 
+./target/release/node-template --chain=local --base-path ~/tmp/validator1 --alice --node-key=c12b6d18942f5ee8528c8e2baf4e147b5c5c18710926ea492d09cbd9f6c9f82a --port 30333 --ws-port 9944
+```
+
+And Bob's in another:
+
+```bash
+// Now with Bob's node 
+./target/release/node-template --chain=local --base-path ~/tmp/validator2 --bob --node-key=6ce3be907dbcabf20a9a5a60a712b4256a54196000a8ed4050d352bc113f8c58 --port 30334 --ws-port 9945
+```
+
+Make sure you've added your additional types for ``PeerId``s:
+```bash
+{
+  "PeerId": "(Vec<u8>)"
+}
+```
+
+_Still WIP ..._ 
+
+## 6. Other
 ### Post-genesis Governance
 Here are some examples of additional governance mechanisms planned to be added to Kusama:
 - **Oracle Committee**: memembers paid to vote on objectively true or false statements
@@ -287,12 +339,12 @@ Here are some examples of additional governance mechanisms planned to be added t
 
 _TODO: Add more cross references; Add examples of different configurations and their functionality_
 
-A quote from a Polkadot core developer and council member: _"[Wei] believes that voting is only the last step of democracy. Detailed discussions and community engagements are essential before voting, in order to better understand the proposals, look into any potential issues, and avoid unnecessary contentions. (Core developer and council member"_.[Source](https://that.world/~wei/polkadot/council/)
+A quote from a Polkadot core developer and council member: _"[Wei] believes that voting is only the last step of democracy. Detailed discussions and community engagements are essential before voting, in order to better understand the proposals, look into any potential issues, and avoid unnecessary contentions."_  [See reference](https://that.world/~wei/polkadot/council/)
 
 Sources:
+
 https://wiki.polkadot.network/docs/en/learn-governance
 
 https://github.com/paritytech/polkadot/wiki/Governance
 
 https://polkadot.network/kusama-rollout-and-governance/
-

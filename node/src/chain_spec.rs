@@ -113,7 +113,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 				get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
-			],
+				],
 			true,
 		),
 		// Bootnodes
@@ -172,13 +172,15 @@ fn testnet_genesis(
 		}),
 
 		pallet_collective_Instance1: Some(CouncilConfig {
-				members: vec![],
+				members: vec![
+					// add Alice and Bob as initial council members
+					get_account_id_from_seed::<sr25519::Public>("Alice"),
+					get_account_id_from_seed::<sr25519::Public>("Bob"),
+					get_account_id_from_seed::<sr25519::Public>("Charlie"),
+				],
 				phantom: Default::default(),
 			}),
 		
-		pallet_elections_phragmen: Some(ElectionsPhragmenConfig {
-			members: vec![],
-		}),
+		pallet_elections_phragmen: Some(ElectionsPhragmenConfig::default()),
 	}
-	
 }
