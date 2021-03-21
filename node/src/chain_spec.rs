@@ -1,16 +1,12 @@
 use sp_core::{Pair, Public, sr25519};
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, SystemConfig, WASM_BINARY, Signature, ElectionsPhragmenConfig
+	SudoConfig, SystemConfig, WASM_BINARY, Signature
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
 use sp_runtime::traits::{Verify, IdentifyAccount};
 use sc_service::ChainType;
-use sp_core::OpaquePeerId; // A struct wraps Vec<u8>, represents as our `PeerId`.
-use node_template_runtime::NodeAuthorizationConfig; // The genesis config that serves for our pallet.
-use node_template_runtime::{
-	CouncilConfig};
 
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -43,7 +39,7 @@ pub fn authority_keys_from_seed(s: &str) -> (AuraId, GrandpaId) {
 }
 
 pub fn development_config() -> Result<ChainSpec, String> {
-	let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
+	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
 
 	Ok(ChainSpec::from_genesis(
 		// Name
@@ -82,7 +78,7 @@ pub fn development_config() -> Result<ChainSpec, String> {
 }
 
 pub fn local_testnet_config() -> Result<ChainSpec, String> {
-	let wasm_binary = WASM_BINARY.ok_or("Development wasm binary not available".to_string())?;
+	let wasm_binary = WASM_BINARY.ok_or_else(|| "Development wasm binary not available".to_string())?;
 
 	Ok(ChainSpec::from_genesis(
 		// Name
@@ -113,10 +109,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 				get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
-				// add prefunded Treasury
-				hex_literal::hex!("6d6f646c70792f74727372790000000000000000000000000000000000000000").into(),
-
-				],
+			],
 			true,
 		),
 		// Bootnodes
@@ -160,30 +153,5 @@ fn testnet_genesis(
 			// Assign network admin rights.
 			key: root_key,
 		}),
-
-		pallet_node_authorization: Some(NodeAuthorizationConfig {
-    nodes: vec![
-        (
-            OpaquePeerId(bs58::decode("12D3KooWBmAwcd4PJNJvfV89HwE48nwkRmAgo8Vy3uQEyNNHBox2").into_vec().unwrap()),
-            endowed_accounts[0].clone()
-        ),
-        (
-            OpaquePeerId(bs58::decode("12D3KooWQYV9dGMFoRzNStwpXztXaBUjtPqi6aU76ZgUriHhKust").into_vec().unwrap()),
-            endowed_accounts[1].clone()
-        	),
-  	  	],
-		}),
-
-		pallet_collective_Instance1: Some(CouncilConfig {
-				members: vec![
-					// add Alice and Bob as initial council members
-					get_account_id_from_seed::<sr25519::Public>("Alice"),
-					get_account_id_from_seed::<sr25519::Public>("Bob"),
-					get_account_id_from_seed::<sr25519::Public>("Charlie"),
-				],
-				phantom: Default::default(),
-			}),
-		
-		pallet_elections_phragmen: Some(ElectionsPhragmenConfig::default()),
 	}
 }
