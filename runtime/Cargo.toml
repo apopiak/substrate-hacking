@@ -36,12 +36,14 @@ frame-system-benchmarking = { default-features = false, optional = true, version
 frame-system-rpc-runtime-api = { default-features = false, version = '3.0.0' }
 pallet-aura = { default-features = false, version = '3.0.0' }
 pallet-balances = { default-features = false, version = '3.0.0' }
+pallet-bounties = { default-features = false, version = '3.0.0' }
 pallet-collective = { default-features = false, version = '3.0.0' }
 pallet-grandpa = { default-features = false, version = '3.0.0' }
 pallet-membership = { default-features = false, version = '3.0.0' }
 pallet-elections-phragmen = { default-features = false, version = '3.0.0' }
 pallet-randomness-collective-flip = { default-features = false, version = '3.0.0' }
 pallet-sudo = { default-features = false, version = '3.0.0' }
+pallet-treasury = { default-features = false, version = '3.0.0' }
 pallet-timestamp = { default-features = false, version = '3.0.0' }
 pallet-transaction-payment = { default-features = false, version = '3.0.0' }
 pallet-transaction-payment-rpc-runtime-api = { default-features = false, version = '3.0.0' }
@@ -79,12 +81,14 @@ std = [
     'frame-system-rpc-runtime-api/std',
     'pallet-aura/std',
     'pallet-balances/std',
+    'pallet-bounties/std',
     'pallet-collective/std',
     'pallet-elections-phragmen/std',
     'pallet-grandpa/std',
     'pallet-membership/std',
     'pallet-randomness-collective-flip/std',
     'pallet-sudo/std',
+    'pallet-treasury/std',
     'pallet-template/std',
     'pallet-timestamp/std',
     'pallet-transaction-payment/std',
