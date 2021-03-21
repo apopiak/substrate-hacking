@@ -1,7 +1,7 @@
 use sp_core::{Pair, Public, sr25519};
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, SystemConfig, WASM_BINARY, Signature
+	SudoConfig, SystemConfig, WASM_BINARY, Signature, ExecCommitteeConfig, CouncilConfig, ElectionsConfig, Balance, DOLLARS
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
@@ -109,7 +109,10 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 				get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
-			],
+
+				// add prefunded Treasury
+				hex_literal::hex!("6d6f646c70792f74727372790000000000000000000000000000000000000000").into(),
+				],
 			true,
 		),
 		// Bootnodes
@@ -124,6 +127,10 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 		None,
 	))
 }
+
+
+	const ENDOWMENT: Balance = 10_000_000 * DOLLARS;
+	const STASH: Balance = ENDOWMENT / 1000;
 
 /// Configure initial storage state for FRAME modules.
 fn testnet_genesis(
@@ -153,5 +160,27 @@ fn testnet_genesis(
 			// Assign network admin rights.
 			key: root_key,
 		}),
+
+		pallet_elections_phragmen: Some(ElectionsConfig {
+			members: endowed_accounts.iter()
+						.take((endowed_accounts.len() + 1) / 2)
+						.cloned()
+						.map(|member| (member, STASH))
+						.collect(),
+		}),
+
+		pallet_collective_Instance1: Some(CouncilConfig::default()),
+		pallet_collective_Instance2: Some(ExecCommitteeConfig {
+			members: vec![
+				// add Alice and Bob as initial council members
+				get_account_id_from_seed::<sr25519::Public>("Alice"),
+				get_account_id_from_seed::<sr25519::Public>("Bob"),
+				get_account_id_from_seed::<sr25519::Public>("Charlie"),
+			],
+			phantom: Default::default(),
+		}),
+
+		pallet_membership_Instance1: Some(Default::default()),
+
 	}
 }
