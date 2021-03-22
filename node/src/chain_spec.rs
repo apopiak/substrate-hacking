@@ -169,10 +169,9 @@ fn testnet_genesis(
 						.collect(),
 		}),
 
-		pallet_collective_Instance1: Some(CouncilConfig::default()),
-		pallet_collective_Instance2: Some(ExecCommitteeConfig {
+		// Initialize StudentCouncil members
+		pallet_collective_Instance1: Some(StudentCouncilConfig {
 			members: vec![
-				// add Alice and Bob as initial council members
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				get_account_id_from_seed::<sr25519::Public>("Bob"),
 				get_account_id_from_seed::<sr25519::Public>("Charlie"),
@@ -180,6 +179,7 @@ fn testnet_genesis(
 			phantom: Default::default(),
 		}),
 
+		pallet_collective_Instance2: Some(ExecCommitteeConfig::default()),
 		pallet_membership_Instance1: Some(Default::default()),
 
 	}

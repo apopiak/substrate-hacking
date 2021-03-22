@@ -115,11 +115,6 @@ pub const MILLISECS_PER_BLOCK: u64 = 6000;
 
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
-// Time is measured by number of blocks.
-pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
-pub const HOURS: BlockNumber = MINUTES * 60;
-pub const DAYS: BlockNumber = HOURS * 24;
-
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
@@ -266,26 +261,33 @@ impl pallet_template::Config for Runtime {
 	type Event = Event;
 }
 
+// 🕒 Time matters (down here for demo purposes).
+pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+pub const HOURS: BlockNumber = MINUTES * 60;
+pub const DAYS: BlockNumber = HOURS * 24;
+
 parameter_types! {
-	pub const CouncilMotionDuration: BlockNumber = 5 * DAYS;
-	pub const CouncilMaxProposals: u32 = 100;
-	pub const CouncilMaxMembers: u32 = 100;
+	pub const StudentCouncilMotionDuration: BlockNumber = 4 * MINUTES;
+	pub const StudentCouncilMaxProposals: u32 = 100;
+	pub const StudentCouncilMaxMembers: u32 = 100;
 }
 
+// 🙋 Implementing the Student Council collective.
 type StudentCouncilCollective = pallet_collective::Instance1;
 impl pallet_collective::Config<StudentCouncilCollective> for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
-	type MotionDuration = CouncilMotionDuration;
-	type MaxProposals = CouncilMaxProposals;
-	type MaxMembers = CouncilMaxMembers;
+	type MotionDuration = StudentCouncilMotionDuration;
+	type MaxProposals = StudentCouncilMaxProposals;
+	type MaxMembers = StudentCouncilMaxMembers;
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
 	type WeightInfo = ();
 }
 
+// 🙋 Implementing the ExecutiveCommittee collective.
 parameter_types! {
-	pub const ExecCommitteeMotionDuration: BlockNumber = 5 * DAYS;
+	pub const ExecCommitteeMotionDuration: BlockNumber = 7 * DAYS;
 	pub const ExecCommitteeMaxProposals: u32 = 100;
 	pub const ExecCommitteeMaxMembers: u32 = 100;
 }
@@ -302,11 +304,14 @@ impl pallet_collective::Config<ExecCommitteeCollective> for Runtime {
 	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
 }
 
+// 👔🗝️ Origins are key.
 type EnsureRootOrHalfCouncil = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, StudentCouncilCollective>
+	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, ExecCommitteeCollective>
 >;
+
+// 👔 ExecCommittee can give special permissions to members.
 impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 	type Event = Event;
 	type AddOrigin = EnsureRootOrHalfCouncil;
@@ -318,37 +323,37 @@ impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 	type MembershipChanged = ExecCommittee;
 }
 
-// Money matters.
+// 👔💰 Money matters.
 pub const MILLICENTS: Balance = 1_000_000_000;
-pub const CENTS: Balance = 1_000 * MILLICENTS;    // assume this is worth about a cent.
+pub const CENTS: Balance = 1_000 * MILLICENTS;   
 pub const DOLLARS: Balance = 100 * CENTS;
 
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
 	items as Balance * 15 * CENTS + (bytes as Balance) * 6 * CENTS
 }
-
+// Demo modifications: Student Council can only have 3 members and 5 candidates for members to vote on.
+// Every new candidate will get elected for Student Council every TermDuration, set to 10 minutes for demo purposes. 
 parameter_types! {
-	pub const CandidacyBond: Balance = 10 * DOLLARS;
+	pub const CandidacyBond: Balance = 1 * DOLLARS;
 	// 1 storage item created, key size is 32 bytes, value size is 16+16.
 	pub const VotingBondBase: Balance = deposit(1, 64);
 	// additional data per vote is 32 bytes (account id).
 	pub const VotingBondFactor: Balance = deposit(0, 32);
-	pub const TermDuration: BlockNumber = 7 * DAYS;
-	pub const DesiredMembers: u32 = 13;
-	pub const DesiredRunnersUp: u32 = 7;
+	pub const TermDuration: BlockNumber = 1 * DAYS;
+	pub const DesiredMembers: u32 = 3;
+	pub const DesiredRunnersUp: u32 = 5;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 }
 
 // TODO: Make sure that there are no more than `MaxMembers` members elected via elections-phragmen.
 
+// 💪👨‍🎓👩‍🎓 StudentCouncil can elect new ExecCommittee members and vote on proposals.
 impl pallet_elections_phragmen::Config for Runtime {
 	type Event = Event;
 	type ModuleId = ElectionsPhragmenModuleId;
 	type Currency = Balances;
-	type ChangeMembers = Council;
-	// NOTE: this implies that council's genesis members cannot be set directly and must come from
-	// this module.
-	type InitializeMembers = Council;
+	type ChangeMembers = StudentCouncil;
+	type InitializeMembers = StudentCouncil;
 	type CurrencyToVote = U128CurrencyToVote;
 	type CandidacyBond = CandidacyBond;
 	type VotingBondBase = VotingBondBase;
@@ -361,8 +366,9 @@ impl pallet_elections_phragmen::Config for Runtime {
 	type WeightInfo = pallet_elections_phragmen::weights::SubstrateWeight<Runtime>;
 }
 
+// 📚 These macros are all stuff that the Treasury, Bounties and Tip pallets will require.
 parameter_types! {
-	pub const ProposalBond: Permill = Permill::from_percent(5);
+	pub const ProposalBond: Permill = Permill::from_percent(1);
 	pub const ProposalBondMinimum: Balance = 1 * DOLLARS;
 	pub const SpendPeriod: BlockNumber = 1 * DAYS;
 	pub const Burn: Permill = Permill::from_percent(50);
@@ -371,27 +377,33 @@ parameter_types! {
 	pub const TipReportDepositBase: Balance = 1 * DOLLARS;
 	pub const DataDepositPerByte: Balance = 1 * CENTS;
 	pub const BountyDepositBase: Balance = 1 * DOLLARS;
-	pub const BountyDepositPayoutDelay: BlockNumber = 1 * DAYS;
+	pub const BountyDepositPayoutDelay: BlockNumber = 10 * MINUTES;
 	pub const TreasuryModuleId: ModuleId = ModuleId(*b"py/trsry");
 	pub const BountyUpdatePeriod: BlockNumber = 14 * DAYS;
 	pub const MaximumReasonLength: u32 = 16384;
-	pub const BountyCuratorDeposit: Permill = Permill::from_percent(50);
-	pub const BountyValueMinimum: Balance = 5 * DOLLARS;
+	pub const BountyCuratorDeposit: Permill = Permill::from_percent(10);
+	pub const BountyValueMinimum: Balance = 1 * DOLLARS;
 }
+
+	// 👔🗝️ Origins are "the" key.
+	// At least 2/3 of the committee needs to approve for a proposal to be validated.
+	type ExecOriginApprove = EnsureOneOf<
+		AccountId,
+		EnsureRoot<AccountId>,
+		pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, ExecCommitteeCollective>
+	>;
+	// At least 1/3 of the committee needs to approve to reject a proposal.
+	type ExecOriginReject = EnsureOneOf<
+		AccountId,
+		EnsureRoot<AccountId>,
+		pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, ExecCommitteeCollective>
+	>;
 
 impl pallet_treasury::Config for Runtime {
 	type ModuleId = TreasuryModuleId;
 	type Currency = Balances;
-	type ApproveOrigin = EnsureOneOf<
-		AccountId,
-		EnsureRoot<AccountId>,
-		pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, ExecCommitteeCollective>
-	>;
-	type RejectOrigin = EnsureOneOf<
-		AccountId,
-		EnsureRoot<AccountId>,
-		pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, ExecCommitteeCollective>
-	>;
+	type ApproveOrigin = ExecOriginApprove;
+	type RejectOrigin = ExecOriginReject;
 	type Event = Event;
 	type OnSlash = ();
 	type ProposalBond = ProposalBond;
@@ -403,6 +415,7 @@ impl pallet_treasury::Config for Runtime {
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
 }
 
+// Since Bounties is tightly coupled with Treasury, its gets the traits from its parameter_types.
 impl pallet_bounties::Config for Runtime {
 	type Event = Event;
 	type BountyDepositBase = BountyDepositBase;
@@ -415,6 +428,7 @@ impl pallet_bounties::Config for Runtime {
 	type WeightInfo = pallet_bounties::weights::SubstrateWeight<Runtime>;
 }
 
+// Since Tips is tightly coupled with Treasury, its gets the traits from its parameter_types.
 impl pallet_tips::Config for Runtime {
 	type Event = Event;
 	type DataDepositPerByte = DataDepositPerByte;
@@ -433,6 +447,7 @@ construct_runtime!(
 		NodeBlock = opaque::Block,
 		UncheckedExtrinsic = UncheckedExtrinsic
 	{
+		// Core primitives.
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
 		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Module, Call, Storage},
 		Timestamp: pallet_timestamp::{Module, Call, Storage, Inherent},
@@ -448,7 +463,7 @@ construct_runtime!(
 
 		// Governance stuff.
 		Sudo: pallet_sudo::{Module, Call, Config<T>, Storage, Event<T>},
-		Council: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		StudentCouncil: pallet_collective::<Instance1>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		ExecCommittee: pallet_collective::<Instance2>::{Module, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		ExecCommitteeMembership: pallet_membership::<Instance1>::{Module, Call, Storage, Event<T>, Config<T>},
 		Elections: pallet_elections_phragmen::{Module, Call, Storage, Event<T>, Config<T>},
