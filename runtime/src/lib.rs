@@ -311,7 +311,7 @@ type EnsureRootOrHalfCouncil = EnsureOneOf<
 	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, ExecCommitteeCollective>
 >;
 
-// 👔 ExecCommittee can give special permissions to members.
+// 👔 ExecCommittee have special permissions as members.
 impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 	type Event = Event;
 	type AddOrigin = EnsureRootOrHalfCouncil;
@@ -340,7 +340,7 @@ parameter_types! {
 	// additional data per vote is 32 bytes (account id).
 	pub const VotingBondFactor: Balance = deposit(0, 32);
 	pub const TermDuration: BlockNumber = 1 * DAYS;
-	pub const DesiredMembers: u32 = 3;
+	pub const DesiredMembers: u32 = 6;
 	pub const DesiredRunnersUp: u32 = 5;
 	pub const ElectionsPhragmenModuleId: LockIdentifier = *b"phrelect";
 }
@@ -370,9 +370,9 @@ impl pallet_elections_phragmen::Config for Runtime {
 parameter_types! {
 	pub const ProposalBond: Permill = Permill::from_percent(1);
 	pub const ProposalBondMinimum: Balance = 1 * DOLLARS;
-	pub const SpendPeriod: BlockNumber = 1 * DAYS;
-	pub const Burn: Permill = Permill::from_percent(50);
-	pub const TipCountdown: BlockNumber = 1 * DAYS;
+	pub const SpendPeriod: BlockNumber = 5 * MINUTES;
+	pub const Burn: Permill = Permill::from_percent(2);
+	pub const TipCountdown: BlockNumber = 2 * MINUTES;
 	pub const TipFindersFee: Percent = Percent::from_percent(20);
 	pub const TipReportDepositBase: Balance = 1 * DOLLARS;
 	pub const DataDepositPerByte: Balance = 1 * CENTS;
@@ -399,6 +399,7 @@ parameter_types! {
 		pallet_collective::EnsureProportionMoreThan<_1, _3, AccountId, ExecCommitteeCollective>
 	>;
 
+	// Note: to prefund the treasury, send units to 5EYCAe5ijiYfyeZ2JJCGq56LmPyNRAKzpG4QkoQkkQNB5e6Z.
 impl pallet_treasury::Config for Runtime {
 	type ModuleId = TreasuryModuleId;
 	type Currency = Balances;

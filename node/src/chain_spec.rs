@@ -1,7 +1,7 @@
 use sp_core::{Pair, Public, sr25519};
 use node_template_runtime::{
 	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig,
-	SudoConfig, SystemConfig, WASM_BINARY, Signature, ExecCommitteeConfig, CouncilConfig, ElectionsConfig, Balance, DOLLARS
+	SudoConfig, SystemConfig, WASM_BINARY, Signature, ExecCommitteeConfig, StudentCouncilConfig, ElectionsConfig, Balance, DOLLARS
 };
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_finality_grandpa::AuthorityId as GrandpaId;
@@ -61,6 +61,13 @@ pub fn development_config() -> Result<ChainSpec, String> {
 				get_account_id_from_seed::<sr25519::Public>("Bob"),
 				get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
+				get_account_id_from_seed::<sr25519::Public>("Dave"),
+				get_account_id_from_seed::<sr25519::Public>("Eve"),
+				get_account_id_from_seed::<sr25519::Public>("Ferdie"),
+				get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
+				get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
+				get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
+				get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 			],
 			true,
 		),
@@ -110,7 +117,7 @@ pub fn local_testnet_config() -> Result<ChainSpec, String> {
 				get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
 				get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 
-				// add prefunded Treasury
+				// add Treasury
 				hex_literal::hex!("6d6f646c70792f74727372790000000000000000000000000000000000000000").into(),
 				],
 			true,
@@ -169,17 +176,25 @@ fn testnet_genesis(
 						.collect(),
 		}),
 
-		// Initialize StudentCouncil members
-		pallet_collective_Instance1: Some(StudentCouncilConfig {
+		// Initialize StudentCouncil members (example)
+		// pallet_collective_Instance1: Some(StudentCouncilConfig {
+		// 	members: vec![
+		// 		get_account_id_from_seed::<sr25519::Public>("Alice"),
+		// 		get_account_id_from_seed::<sr25519::Public>("Bob"),
+		// 	],
+		// 	phantom: Default::default(),
+		// }),
+
+		pallet_collective_Instance1: Some(StudentCouncilConfig::default()),
+		pallet_collective_Instance2: Some(ExecCommitteeConfig {
 			members: vec![
+				// add Alice and Bob as initial council members
 				get_account_id_from_seed::<sr25519::Public>("Alice"),
 				get_account_id_from_seed::<sr25519::Public>("Bob"),
 				get_account_id_from_seed::<sr25519::Public>("Charlie"),
 			],
 			phantom: Default::default(),
 		}),
-
-		pallet_collective_Instance2: Some(ExecCommitteeConfig::default()),
 		pallet_membership_Instance1: Some(Default::default()),
 
 	}
