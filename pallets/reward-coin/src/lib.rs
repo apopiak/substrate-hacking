@@ -97,6 +97,7 @@ pub mod pallet {
 		Killed(T::AccountId),
 		Minted(T::AccountId, T::Balance),
 		Burned(T::AccountId, T::Balance),
+		Transfered(T::AccountId, T::AccountId, T::Balance),
 	}
 
 	#[pallet::error]
@@ -111,6 +112,8 @@ pub mod pallet {
 		Underflow,
 		// Cannot burn the balance of a non-existent account.
 		CannotBurnEmpty,
+		// There is not enough balance in the sender's account for the transfer.
+		InsufficientBalance,
 	}
 
 	// You can implement the [`Hooks`] trait to define some logic
@@ -129,6 +132,7 @@ pub mod pallet {
 		}
 	}
 
+	// Extrinsics callable from outside the runtime.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		#[pallet::weight(1_000)]
@@ -143,18 +147,12 @@ pub mod pallet {
 			ensure!(sender == meta.minter, Error::<T>::NoPermission);
 
 			meta.issuance = meta.issuance.checked_add(&amount).ok_or(Error::<T>::Overflow)?;
-			let created = Accounts::<T>::mutate(&beneficiary, |acc| {
-				let created = acc == &Zero::zero();
-				// fine because we check the issuance for overflow above
-				*acc = acc.saturating_add(amount);
-				created
-			});
 
 			// store the new issuance
 			MetaDataStore::<T>::put(meta);
 
-			if created {
-				Self::deposit_event(Event::<T>::Created(beneficiary.clone()))
+			if Self::increase_balance(&beneficiary, amount) {
+				Self::deposit_event(Event::<T>::Created(beneficiary.clone()));
 			}
 			Self::deposit_event(Event::<T>::Minted(beneficiary, amount));
 
@@ -198,5 +196,60 @@ pub mod pallet {
 
 			Ok(().into())
 		}
+
+		#[pallet::weight(1_000)]
+		pub(super) fn transfer(
+			origin: OriginFor<T>,
+			to: T::AccountId,
+			#[pallet::compact] amount: T::Balance,
+			allow_killing: bool,
+		) -> DispatchResultWithPostInfo {
+			let sender = ensure_signed(origin)?;
+
+			let balance = Accounts::<T>::get(&sender);
+			let new_balance = balance.checked_sub(&amount).ok_or(Error::<T>::InsufficientBalance)?;
+
+			let sent = if new_balance < T::MinBalance::get() {
+				ensure!(allow_killing, Error::<T>::BelowMinBalance);
+				Accounts::<T>::remove(&sender);
+				Self::deposit_event(Event::<T>::Killed(sender.clone()));
+				if Self::increase_balance(&to, balance) {
+					Self::deposit_event(Event::<T>::Created(to.clone()));
+				}
+				balance
+			} else {
+				let created = Accounts::<T>::try_mutate(&to, |bal| -> Result<bool, DispatchError> {
+					let created = bal == &Zero::zero();
+					let new_balance = bal.saturating_add(amount);
+					// make sure we don't create dust accounts
+					ensure!(!created || new_balance > T::MinBalance::get(), Error::<T>::BelowMinBalance);
+					// fine because transfers don't change the issuance
+					*bal = new_balance;
+					Ok(created)
+				})?;
+				Accounts::<T>::insert(&sender, new_balance);
+				if created {
+					Self::deposit_event(Event::<T>::Created(to.clone()));
+				}
+				amount
+			};
+
+			Self::deposit_event(Event::<T>::Transfered(sender, to, sent));
+
+			Ok(().into())
+		}
+	}
+}
+
+// Internal functions of the pallet
+impl<T: Config> Pallet<T> {
+	fn increase_balance(acc: &T::AccountId, amount: T::Balance) -> bool {
+		Accounts::<T>::mutate(&acc, |bal| {
+			let created = bal == &Zero::zero();
+			// fine because we check the issuance for overflow before minting and transfers
+			// don't change the issuance
+			*bal = bal.saturating_add(amount);
+			created
+		})
 	}
 }
