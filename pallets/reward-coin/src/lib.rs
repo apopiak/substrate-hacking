@@ -12,6 +12,8 @@ use sp_runtime::{
 		AtLeast32BitUnsigned, Zero, Saturating, CheckedAdd, CheckedSub,
 	},
 };
+use frame_support::dispatch::DispatchResult;
+use frame_support::transactional;
 
 #[cfg(test)]
 mod mock;
@@ -127,6 +129,12 @@ pub mod pallet {
 		fn on_initialize(_n: T::BlockNumber) -> Weight {
 			// Anything that needs to be done at the start of the block.
 			// We don't do anything here.
+			let mut meta = MetaDataStore::<T>::get();
+			let value: T::Balance = 50u8.into();
+			meta.issuance = meta.issuance.saturating_add(value);
+			Accounts::<T>::mutate(&meta.minter, |bal| {
+				*bal = bal.saturating_add(value);
+			});
 
 			0
 		}
@@ -198,43 +206,29 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(1_000)]
+		#[transactional]
 		pub(super) fn transfer(
 			origin: OriginFor<T>,
 			to: T::AccountId,
 			#[pallet::compact] amount: T::Balance,
-			allow_killing: bool,
 		) -> DispatchResultWithPostInfo {
 			let sender = ensure_signed(origin)?;
 
-			let balance = Accounts::<T>::get(&sender);
-			let new_balance = balance.checked_sub(&amount).ok_or(Error::<T>::InsufficientBalance)?;
+			Accounts::<T>::try_mutate(&sender, |bal| -> DispatchResult {
+				let new_bal = bal.checked_sub(&amount).ok_or(Error::<T>::InsufficientBalance)?;
+				ensure!(new_bal >= T::MinBalance::get(), Error::<T>::BelowMinBalance);
+				*bal = new_bal;
+				Ok(())
+			})?;
+		
+			Accounts::<T>::try_mutate(&to, |rec_bal| -> DispatchResult {
+				let new_bal = rec_bal.saturating_add(amount);
+				ensure!(new_bal >= T::MinBalance::get(), Error::<T>::BelowMinBalance);
+				*rec_bal = new_bal;
+				Ok(())
+			})?;
 
-			let sent = if new_balance < T::MinBalance::get() {
-				ensure!(allow_killing, Error::<T>::BelowMinBalance);
-				Accounts::<T>::remove(&sender);
-				Self::deposit_event(Event::<T>::Killed(sender.clone()));
-				if Self::increase_balance(&to, balance) {
-					Self::deposit_event(Event::<T>::Created(to.clone()));
-				}
-				balance
-			} else {
-				let created = Accounts::<T>::try_mutate(&to, |bal| -> Result<bool, DispatchError> {
-					let created = bal == &Zero::zero();
-					let new_balance = bal.saturating_add(amount);
-					// make sure we don't create dust accounts
-					ensure!(!created || new_balance > T::MinBalance::get(), Error::<T>::BelowMinBalance);
-					// fine because transfers don't change the issuance
-					*bal = new_balance;
-					Ok(created)
-				})?;
-				Accounts::<T>::insert(&sender, new_balance);
-				if created {
-					Self::deposit_event(Event::<T>::Created(to.clone()));
-				}
-				amount
-			};
-
-			Self::deposit_event(Event::<T>::Transfered(sender, to, sent));
+			Self::deposit_event(Event::<T>::Transfered(sender, to, amount));
 
 			Ok(().into())
 		}

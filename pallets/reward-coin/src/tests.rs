@@ -27,12 +27,12 @@ fn transfer_works() {
 		// Dispatch a signed extrinsic.
 		assert_ok!(RewardCoin::mint(Origin::signed(1), 2, 42));
 
-		assert_noop!(RewardCoin::transfer(Origin::signed(2), 3, 50, false), Error::<Test>::InsufficientBalance);
+		assert_noop!(RewardCoin::transfer(Origin::signed(2), 3, 50), Error::<Test>::InsufficientBalance);
 
-		assert_noop!(RewardCoin::transfer(Origin::signed(2), 4, 41, false), Error::<Test>::BelowMinBalance);
+		assert_noop!(RewardCoin::transfer(Origin::signed(2), 4, 41), Error::<Test>::BelowMinBalance);
 
-		assert_noop!(RewardCoin::transfer(Origin::signed(2), 4, 1, false), Error::<Test>::BelowMinBalance);
+		assert_noop!(RewardCoin::transfer(Origin::signed(2), 4, 1), Error::<Test>::BelowMinBalance);
 
-		assert_ok!(RewardCoin::transfer(Origin::signed(2), 3, 15, false));
+		assert_ok!(RewardCoin::transfer(Origin::signed(2), 3, 15));
 	});
 }
