@@ -9,7 +9,7 @@ use sp_std::prelude::*;
 use codec::{Encode, Decode};
 use sp_runtime::{
 	RuntimeDebug, traits::{
-		AtLeast32BitUnsigned, Zero, Saturating, CheckedAdd,
+		AtLeast32BitUnsigned, Zero, Saturating, CheckedAdd, CheckedSub,
 	},
 };
 
@@ -93,17 +93,24 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	#[pallet::metadata(T::AccountId = "AccountId", T::Balance = "Balance")]
 	pub enum Event<T: Config> {
+		Created(T::AccountId),
+		Killed(T::AccountId),
 		Minted(T::AccountId, T::Balance),
+		Burned(T::AccountId, T::Balance),
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
-		// An account would go below the minimum balance.
+		// An account would go below the minimum balance if the operation were executed.
 		BelowMinBalance,
 		// The origin account does not have the required permission for the operation.
 		NoPermission,
 		/// An operation would lead to an overflow.
 		Overflow,
+		/// An operation would lead to an underflow.
+		Underflow,
+		// Cannot burn the balance of a non-existent account.
+		CannotBurnEmpty,
 	}
 
 	// You can implement the [`Hooks`] trait to define some logic
@@ -136,15 +143,58 @@ pub mod pallet {
 			ensure!(sender == meta.minter, Error::<T>::NoPermission);
 
 			meta.issuance = meta.issuance.checked_add(&amount).ok_or(Error::<T>::Overflow)?;
-			Accounts::<T>::mutate(&beneficiary, |acc| {
+			let created = Accounts::<T>::mutate(&beneficiary, |acc| {
+				let created = acc == &Zero::zero();
 				// fine because we check the issuance for overflow above
 				*acc = acc.saturating_add(amount);
+				created
 			});
 
 			// store the new issuance
 			MetaDataStore::<T>::put(meta);
 
+			if created {
+				Self::deposit_event(Event::<T>::Created(beneficiary.clone()))
+			}
 			Self::deposit_event(Event::<T>::Minted(beneficiary, amount));
+
+			Ok(().into())
+		}
+
+		#[pallet::weight(1_000)]
+		pub(super) fn burn(
+			origin: OriginFor<T>,
+			burned: T::AccountId,
+			#[pallet::compact] amount: T::Balance,
+			allow_killing: bool,
+		) -> DispatchResultWithPostInfo {
+			let sender = ensure_signed(origin)?;
+			let mut meta = Self::meta_data();
+			ensure!(sender == meta.burner, Error::<T>::NoPermission);
+
+			let balance = Accounts::<T>::get(&burned);
+			ensure!(balance > Zero::zero(), Error::<T>::CannotBurnEmpty);
+			let new_balance = balance.saturating_sub(amount);
+			let burn_amount = if new_balance < T::MinBalance::get() {
+				ensure!(allow_killing, Error::<T>::BelowMinBalance);
+				let burn_amount = balance;
+				ensure!(meta.issuance.checked_sub(&burn_amount).is_some(), Error::<T>::Underflow);
+				Accounts::<T>::remove(&burned);
+				Self::deposit_event(Event::<T>::Killed(burned.clone()));
+				burn_amount
+			} else {
+				let burn_amount = amount;
+				ensure!(meta.issuance.checked_sub(&burn_amount).is_some(), Error::<T>::Underflow);
+				Accounts::<T>::insert(&burned, new_balance);
+				burn_amount
+			};
+
+			// This is fine because we checked the issuance above.
+			meta.issuance = meta.issuance.saturating_sub(burn_amount);
+			// store the new issuance
+			MetaDataStore::<T>::put(meta);
+
+			Self::deposit_event(Event::<T>::Burned(burned, burn_amount));
 
 			Ok(().into())
 		}
