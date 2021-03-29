@@ -3529,6 +3529,7 @@ dependencies = [
  "pallet-grandpa",
  "pallet-membership",
  "pallet-randomness-collective-flip",
+ "pallet-reward-coin",
  "pallet-sudo",
  "pallet-template",
  "pallet-timestamp",
@@ -3832,6 +3833,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-reward-coin"
+version = "3.0.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-session"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3909,6 +3924,7 @@ dependencies = [
  "frame-system",
  "pallet-treasury",
  "parity-scale-codec",
+ "serde",
  "sp-runtime",
  "sp-std",
 ]
