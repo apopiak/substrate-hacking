@@ -1,4 +1,4 @@
-use crate as pallet_template;
+use crate as pallet_reward_coin;
 use sp_core::H256;
 use frame_support::parameter_types;
 use sp_runtime::{
@@ -17,7 +17,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Module, Call, Config, Storage, Event<T>},
-		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
+		RewardCoin: pallet_reward_coin::{Module, Call, Storage, Event<T>},
 	}
 );
 
@@ -51,8 +51,14 @@ impl system::Config for Test {
 	type SS58Prefix = SS58Prefix;
 }
 
-impl pallet_template::Config for Test {
+parameter_types! {
+	pub const MinBalance: u128 = 10;
+}
+
+impl pallet_reward_coin::Config for Test {
 	type Event = Event;
+	type Balance = u128;
+	type MinBalance = MinBalance;
 }
 
 // Build genesis storage according to the mock runtime.
