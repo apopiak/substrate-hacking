@@ -92,6 +92,7 @@ std = [
     'pallet-treasury/std',
     'pallet-template/std',
     'pallet-timestamp/std',
+    'pallet-tips/std',
     'pallet-transaction-payment/std',
     'pallet-transaction-payment-rpc-runtime-api/std',
     'sp-api/std',
