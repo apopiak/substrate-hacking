@@ -43,6 +43,7 @@ use pallet_transaction_payment::CurrencyAdapter;
 
 /// Import the template pallet.
 pub use pallet_template;
+pub use pallet_reward_coin;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -261,6 +262,16 @@ impl pallet_template::Config for Runtime {
 	type Event = Event;
 }
 
+parameter_types! {
+	pub const MinBalance: Balance = 42;
+}
+
+impl pallet_reward_coin::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type MinBalance = MinBalance;
+}
+
 // 🕒 Time matters (down here for demo purposes).
 pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
 pub const HOURS: BlockNumber = MINUTES * 60;
@@ -471,6 +482,7 @@ construct_runtime!(
 
 		// Include the custom logic from the template pallet in the runtime.
 		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
+		RewardCoin: pallet_reward_coin::{Module, Call, Storage, Event<T>, Config<T>},
 	}
 );
 
